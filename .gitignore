@@ -1,0 +1,81 @@
+# Root .gitignore for AppFit (Node/NestJS API + Flutter app)
+
+# --- Common OS/editor junk ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.orig
+*.log
+
+# --- Node/NestJS (api) ---
+node_modules/
+api/node_modules/
+api/dist/
+api/coverage/
+api/.cache/
+api/.eslintcache
+api/.tsbuildinfo
+
+# Env files (keep only examples)
+.env
+.env.*
+api/.env
+api/.env.*
+!**/.env.example
+
+# Logs
+logs/
+api/logs/
+*.log
+
+# --- Docker ---
+**/.dockerignore
+**/.env.docker
+
+# --- Prisma ---
+# (Não ignorar migrations; devem ser versionadas quando usadas)
+!api/prisma/schema.prisma
+
+# --- Flutter (mobile) ---
+# Generated build outputs
+mobile/build/
+build/
+
+# Flutter/Dart tools
+mobile/.dart_tool/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+
+# IDE/editor settings
+.idea/
+.vscode/
+
+# Android
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/android/app/build/
+mobile/android/app/google-services.json
+
+# iOS
+mobile/ios/Flutter/Flutter.framework/
+mobile/ios/Flutter/Flutter.podspec
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/ios/Runner/GeneratedPluginRegistrant.*
+
+# Linux/MacOS/Windows generated
+mobile/linux/flutter/ephemeral/
+mobile/macos/Flutter/ephemeral/
+mobile/windows/flutter/ephemeral/
+
+# Web build outputs (keep source files under mobile/web)
+mobile/web/.dart_tool/
+mobile/web/.firebase/
+mobile/web/build/
+
+# --- Misc cache ---
+**/.cache/
