@@ -1,0 +1,36 @@
+version: '3.8'
+name: projeto-AppFit
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    container_name: postgres-AppFit
+    environment:
+      POSTGRES_DB: appfit
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata_appfit:/var/lib/postgresql/data
+
+  api:
+    build: .
+    restart: unless-stopped
+    container_name: api-AppFit
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/appfit?schema=public
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
+      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
+      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      PORT: 3000
+    ports:
+      - '3000:3000'
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata_appfit:

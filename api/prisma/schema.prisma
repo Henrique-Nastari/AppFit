@@ -1,0 +1,117 @@
+// Prisma schema for AppFit workouts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Intensity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id        String   @id @db.VarChar(128) // Firebase UID
+  createdAt DateTime @default(now())
+
+  templates WorkoutTemplate[]
+  posts     WorkoutPost[]
+}
+
+model Tag {
+  id        Int               @id @default(autoincrement())
+  name      String            @unique
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  templates WorkoutTemplate[] @relation("TemplateTags")
+  posts     WorkoutPost[]     @relation("PostTags")
+}
+
+model WorkoutTemplate {
+  id              Int               @id @default(autoincrement())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  title           String
+  description     String?
+  intensity       Intensity
+  durationSeconds Int?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  exercises       ExerciseTemplate[]
+  tags            Tag[]             @relation("TemplateTags")
+  posts           WorkoutPost[]
+
+  @@index([userId])
+}
+
+model ExerciseTemplate {
+  id          Int             @id @default(autoincrement())
+  templateId  Int
+  template    WorkoutTemplate @relation(fields: [templateId], references: [id])
+
+  name        String
+  orderIndex  Int
+  sets        Int?
+  reps        Int?
+  restSeconds Int?
+  weight      Float?
+  rpe         Float?
+  notes       String?
+}
+
+model WorkoutPost {
+  id              Int           @id @default(autoincrement())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  templateId      Int?
+  template        WorkoutTemplate? @relation(fields: [templateId], references: [id])
+
+  title           String
+  description     String?
+  date            DateTime
+  intensity       Intensity
+  durationSeconds Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  exercises       WorkoutExercise[]
+  media           MediaAsset[]
+  tags            Tag[]         @relation("PostTags")
+
+  @@index([userId])
+  @@index([date])
+}
+
+model WorkoutExercise {
+  id          Int          @id @default(autoincrement())
+  postId      Int
+  post        WorkoutPost  @relation(fields: [postId], references: [id])
+
+  name        String
+  orderIndex  Int
+  sets        Int?
+  reps        Int?
+  restSeconds Int?
+  weight      Float?
+  rpe         Float?
+  notes       String?
+  completedSets Int?
+}
+
+model MediaAsset {
+  id          Int          @id @default(autoincrement())
+  postId      Int
+  post        WorkoutPost  @relation(fields: [postId], references: [id])
+
+  url         String
+  type        String // image|video
+  sizeBytes   Int?
+  uploadedAt  DateTime @default(now())
+}
