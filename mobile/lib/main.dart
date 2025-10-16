@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'auth/login_page.dart';
 import 'auth/register_page.dart';
 import 'auth/auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,12 +79,167 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text(
-          'Firebase inicializado com sucesso! Você está autenticado.',
-          style: TextStyle(fontSize: 18),
-        ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.fitness_center),
+                const SizedBox(width: 8),
+                Text(
+                  'Feed de treinos',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('workout_posts')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Erro ao carregar feed: ${snapshot.error}'),
+                  );
+                }
+                final docs = snapshot.data?.docs ?? [];
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text('Nenhum post ainda. Crie o primeiro!'),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: docs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final doc = docs[index];
+                    final data = doc.data();
+                    final text = (data['text'] ?? '') as String;
+                    final userEmail = (data['userEmail'] ?? '') as String;
+                    final ts = data['createdAt'];
+                    DateTime? createdAt;
+                    if (ts is Timestamp) createdAt = ts.toDate();
+
+                    return Card(
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.person, size: 18),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    userEmail.isEmpty ? 'Usuário' : userEmail,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge,
+                                  ),
+                                ),
+                                if (createdAt != null)
+                                  Text(
+                                    _formatRelativeTime(createdAt!),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              text,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.add),
+        label: const Text('Post'),
+        onPressed: () async {
+          final user = FirebaseAuth.instance.currentUser;
+          if (user == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Faça login para postar.')),
+            );
+            return;
+          }
+          final controller = TextEditingController();
+          final ok = await showDialog<bool>(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('Novo post de treino'),
+                content: TextField(
+                  controller: controller,
+                  minLines: 2,
+                  maxLines: 5,
+                  decoration: const InputDecoration(
+                    hintText: 'Escreva seu treino, progresso ou dica...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancelar'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Postar'),
+                  ),
+                ],
+              );
+            },
+          );
+          if (ok == true) {
+            final text = controller.text.trim();
+            if (text.isEmpty) return;
+            await FirebaseFirestore.instance.collection('workout_posts').add({
+              'text': text,
+              'userId': user.uid,
+              'userEmail': user.email ?? '',
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Post criado!')),
+            );
+          }
+        },
       ),
     );
   }
+}
+
+String _formatRelativeTime(DateTime dt) {
+  final now = DateTime.now();
+  final diff = now.difference(dt);
+  if (diff.inSeconds < 60) return 'agora';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} min';
+  if (diff.inHours < 24) return '${diff.inHours} h';
+  if (diff.inDays < 7) return '${diff.inDays} d';
+  return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
 }
