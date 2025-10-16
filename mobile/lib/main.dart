@@ -6,6 +6,7 @@ import 'auth/login_page.dart';
 import 'auth/register_page.dart';
 import 'auth/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'services/firestore_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final _authService = AuthService();
+    final repo = FirestoreRepository();
     return Scaffold(
       appBar: AppBar(
         title: const Text('🔥 AppFit conectado ao Firebase'),
@@ -96,11 +98,8 @@ class HomePage extends StatelessWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('workout_posts')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
+            child: StreamBuilder<List<Post>>(
+              stream: repo.feed(limit: 50),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -110,25 +109,18 @@ class HomePage extends StatelessWidget {
                     child: Text('Erro ao carregar feed: ${snapshot.error}'),
                   );
                 }
-                final docs = snapshot.data?.docs ?? [];
-                if (docs.isEmpty) {
+                final posts = snapshot.data ?? const [];
+                if (posts.isEmpty) {
                   return const Center(
                     child: Text('Nenhum post ainda. Crie o primeiro!'),
                   );
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.all(12),
-                  itemCount: docs.length,
+                  itemCount: posts.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final data = doc.data();
-                    final text = (data['text'] ?? '') as String;
-                    final userEmail = (data['userEmail'] ?? '') as String;
-                    final ts = data['createdAt'];
-                    DateTime? createdAt;
-                    if (ts is Timestamp) createdAt = ts.toDate();
-
+                    final p = posts[index];
                     return Card(
                       elevation: 1,
                       shape: RoundedRectangleBorder(
@@ -145,15 +137,15 @@ class HomePage extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    userEmail.isEmpty ? 'Usuário' : userEmail,
+                                    p.ownerEmail.isEmpty ? 'Usuário' : p.ownerEmail,
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelLarge,
                                   ),
                                 ),
-                                if (createdAt != null)
+                                if (p.createdAt != null)
                                   Text(
-                                    _formatRelativeTime(createdAt!),
+                                    _formatRelativeTime(p.createdAt!),
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall,
@@ -162,8 +154,29 @@ class HomePage extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              text,
+                              p.content,
                               style: const TextStyle(fontSize: 16),
+                            ),
+                            if (p.workoutId != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.link, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text('Treino associado'),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                IconButton(
+                                  tooltip: 'Curtir',
+                                  icon: const Icon(Icons.favorite_border),
+                                  onPressed: () => repo.likePost(p.id!),
+                                ),
+                                Text('${p.likeCount}'),
+                              ],
                             ),
                           ],
                         ),
@@ -218,12 +231,11 @@ class HomePage extends StatelessWidget {
           if (ok == true) {
             final text = controller.text.trim();
             if (text.isEmpty) return;
-            await FirebaseFirestore.instance.collection('workout_posts').add({
-              'text': text,
-              'userId': user.uid,
-              'userEmail': user.email ?? '',
-              'createdAt': FieldValue.serverTimestamp(),
-            });
+            await repo.createPost(Post(
+              content: text,
+              ownerId: user.uid,
+              ownerEmail: user.email ?? '',
+            ));
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Post criado!')),
             );
