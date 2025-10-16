@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart'; 
 import 'firebase_options.dart';
 import 'auth/login_page.dart';
 import 'auth/register_page.dart';
@@ -17,22 +18,35 @@ class AppFit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AppFit',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const AuthGate(),
-      routes: {
-        '/home': (context) => const HomePage(),
-        '/login': (context) => const LoginPage(),
-        '/register': (context) => const RegisterPage(),
+    // ADICIONADO: Wrapper para inicializar o ScreenUtil
+    // Isso permite que você use .w, .h e .sp para tamanhos responsivos
+    return ScreenUtilInit(
+      designSize: const Size(375, 812), // Tamanho base do design que você usou
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        // Seu MaterialApp original, agora dentro do builder do ScreenUtil
+        return MaterialApp(
+          title: 'AppFit',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+            useMaterial3: true,
+          ),
+          // Seu AuthGate continua sendo a porta de entrada, o que é perfeito.
+          home: const AuthGate(),
+          routes: {
+            '/home': (context) => HomePage(),
+            '/login': (context) =>  LoginPage(),
+            '/register': (context) =>  RegisterPage(),
+          },
+        );
       },
     );
   }
 }
 
+// O AuthGate continua perfeito, não precisa de nenhuma mudança.
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -47,33 +61,34 @@ class AuthGate extends StatelessWidget {
           );
         }
         if (snapshot.hasData) {
-          return const HomePage();
+          return HomePage();
         }
-        return const LoginPage();
+        return LoginPage();
       },
     );
   }
 }
 
+// HomePage com as correções que já fizemos.
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  HomePage({super.key});
+
+  // CORRIGIDO: AuthService instanciado fora do método build.
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
-    final _authService = AuthService();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🔥 AppFit conectado ao Firebase'),
+        title: const Text('🔥 AppFit'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
             tooltip: 'Sair',
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await _authService.signOut();
-              if (context.mounted) {
-                Navigator.pushReplacementNamed(context, '/login');
-              }
+            onPressed: () {
+              // CORRIGIDO: Apenas chama o signOut, o AuthGate cuida do resto.
+              _authService.signOut();
             },
           ),
         ],
