@@ -1,0 +1,555 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class CreatePostPage extends StatefulWidget {
+  const CreatePostPage({super.key});
+
+  @override
+  State<CreatePostPage> createState() => _CreatePostPageState();
+}
+
+class _CreatePostPageState extends State<CreatePostPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _captionController = TextEditingController();
+  final _imageUrlController = TextEditingController();
+  final _durationController = TextEditingController();
+  final _volumeController = TextEditingController();
+  final _caloriesController = TextEditingController();
+  final _moodController = TextEditingController();
+
+  final List<_ExerciseFormData> _exercises = [];
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _addExercise();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _captionController.dispose();
+    _imageUrlController.dispose();
+    _durationController.dispose();
+    _volumeController.dispose();
+    _caloriesController.dispose();
+    _moodController.dispose();
+    for (final exercise in _exercises) {
+      exercise.dispose();
+    }
+    super.dispose();
+  }
+
+  void _addExercise() {
+    setState(() {
+      _exercises.add(_ExerciseFormData());
+    });
+  }
+
+  void _removeExercise(int index) {
+    if (_exercises.length == 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mantenha pelo menos um exercicio.')),
+      );
+      return;
+    }
+    setState(() {
+      final removed = _exercises.removeAt(index);
+      removed.dispose();
+    });
+  }
+
+  Future<void> _handleSubmit() async {
+    if (_isSubmitting) return;
+    final form = _formKey.currentState;
+    if (form == null) return;
+    if (!form.validate()) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Voce precisa estar autenticado.')),
+      );
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final postData = _buildPostData(user);
+      await FirebaseFirestore.instance.collection('posts').add(postData);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on FirebaseException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao salvar: ${error.message ?? 'tente novamente'}')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro inesperado: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Map<String, dynamic> _buildPostData(User user) {
+    final imageUrl = _imageUrlController.text.trim();
+    final caption = _captionController.text.trim();
+    final title = _titleController.text.trim();
+    final exercises = _exercises
+        .map((exercise) => exercise.toMap())
+        .where((map) => map['name'] != null)
+        .toList();
+
+    final metrics = <String, dynamic>{};
+    final duration = int.tryParse(_durationController.text.trim());
+    if (duration != null) {
+      metrics['DuracaoMin'] = duration;
+    }
+    final volume = double.tryParse(_volumeController.text.trim());
+    if (volume != null) {
+      metrics['VolumeKg'] = volume;
+    }
+    final calories = int.tryParse(_caloriesController.text.trim());
+    if (calories != null) {
+      metrics['Calorias'] = calories;
+    }
+    final mood = _moodController.text.trim();
+    if (mood.isNotEmpty) {
+      metrics['Humor'] = mood;
+    }
+
+    return <String, dynamic>{
+      'userId': user.uid,
+      'userDisplayName': user.displayName?.trim().isNotEmpty == true
+          ? user.displayName!.trim()
+          : (user.email != null ? user.email!.split('@').first : 'Atleta'),
+      'userPhotoUrl': user.photoURL,
+      'workoutTitle': title.isNotEmpty ? title : null,
+      'caption': caption.isNotEmpty ? caption : null,
+      'imageUrl': imageUrl.isNotEmpty ? imageUrl : null,
+      'createdAt': FieldValue.serverTimestamp(),
+      'exercises': exercises,
+      'metrics': metrics.isEmpty ? null : metrics,
+    }..removeWhere((key, value) {
+        if (value == null) return true;
+        if (value is String && value.trim().isEmpty) return true;
+        if (value is List && value.isEmpty) return true;
+        return false;
+      });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Nova postagem'),
+        actions: [
+          TextButton(
+            onPressed: _isSubmitting ? null : _handleSubmit,
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Publicar'),
+          ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeadline('Detalhes principais'),
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Titulo do treino',
+                    hintText: 'Por exemplo: Peito e triceps',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _captionController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Descricao ou notas gerais',
+                    hintText: 'Compartilhe como foi o treino, PRs, sensacoes...',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _imageUrlController,
+                  decoration: const InputDecoration(
+                    labelText: 'URL da imagem (opcional)',
+                    hintText: 'https://...',
+                  ),
+                  keyboardType: TextInputType.url,
+                ),
+                const SizedBox(height: 20),
+                _buildHeadline('Exercicios'),
+                ..._buildExerciseForms(),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _addExercise,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Adicionar exercicio'),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildHeadline('Metricas adicionais'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _durationController,
+                        decoration: const InputDecoration(
+                          labelText: 'Duracao (min)',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _volumeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Volume (kg)',
+                        ),
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _caloriesController,
+                        decoration: const InputDecoration(
+                          labelText: 'Calorias',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _moodController,
+                        decoration: const InputDecoration(
+                          labelText: 'Humor/energia',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSubmitting ? null : _handleSubmit,
+                    icon: const Icon(Icons.check),
+                    label: const Text('Salvar e publicar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildExerciseForms() {
+    return List<Widget>.generate(_exercises.length, (index) {
+      final exercise = _exercises[index];
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Exercicio ${index + 1}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remover exercicio',
+                    onPressed: () => _removeExercise(index),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ],
+              ),
+              TextFormField(
+                controller: exercise.nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nome do exercicio',
+                  hintText: 'Por exemplo: Supino reto',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Informe o nome do exercicio';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: exercise.notesController,
+                decoration: const InputDecoration(
+                  labelText: 'Notas (opcional)',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Series',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              ...List.generate(exercise.sets.length, (setIndex) {
+                final setForm = exercise.sets[setIndex];
+                return _SetFormRow(
+                  key: ValueKey(setForm),
+                  index: setIndex,
+                  setForm: setForm,
+                  onRemove: () {
+                    setState(() {
+                      exercise.removeSet(setIndex);
+                    });
+                  },
+                );
+              }),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      exercise.addSet();
+                    });
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Adicionar serie'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildHeadline(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+    );
+  }
+}
+
+class _SetFormRow extends StatelessWidget {
+  const _SetFormRow({
+    super.key,
+    required this.index,
+    required this.setForm,
+    required this.onRemove,
+  });
+
+  final int index;
+  final _SetFormData setForm;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Serie ${index + 1}',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Remover serie',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: setForm.repsController,
+                    decoration: const InputDecoration(
+                      labelText: 'Reps',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: setForm.weightController,
+                    decoration: const InputDecoration(
+                      labelText: 'Peso (kg)',
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: setForm.distanceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Distancia (m)',
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: setForm.durationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Duracao (seg)',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: setForm.rpeController,
+                    decoration: const InputDecoration(
+                      labelText: 'RPE',
+                    ),
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ExerciseFormData {
+  _ExerciseFormData() {
+    addSet();
+  }
+
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController notesController = TextEditingController();
+  final List<_SetFormData> sets = [];
+
+  void addSet() {
+    sets.add(_SetFormData());
+  }
+
+  void removeSet(int index) {
+    if (sets.length == 1) {
+      return;
+    }
+    sets.removeAt(index).dispose();
+  }
+
+  Map<String, dynamic> toMap() {
+    final name = nameController.text.trim();
+    if (name.isEmpty) return {};
+    final notes = notesController.text.trim();
+    final setsMap = sets
+        .map((set) => set.toMap())
+        .where((map) => map.isNotEmpty)
+        .toList();
+    return <String, dynamic>{
+      'name': name,
+      if (notes.isNotEmpty) 'notes': notes,
+      if (setsMap.isNotEmpty) 'sets': setsMap,
+    };
+  }
+
+  void dispose() {
+    nameController.dispose();
+    notesController.dispose();
+    for (final set in sets) {
+      set.dispose();
+    }
+  }
+}
+
+class _SetFormData {
+  final TextEditingController repsController = TextEditingController();
+  final TextEditingController weightController = TextEditingController();
+  final TextEditingController distanceController = TextEditingController();
+  final TextEditingController durationController = TextEditingController();
+  final TextEditingController rpeController = TextEditingController();
+
+  Map<String, dynamic> toMap() {
+    final reps = int.tryParse(repsController.text.trim());
+    final weight = double.tryParse(weightController.text.trim());
+    final distance = double.tryParse(distanceController.text.trim());
+    final durationSeconds = int.tryParse(durationController.text.trim());
+    final rpe = double.tryParse(rpeController.text.trim());
+
+    return <String, dynamic>{
+      if (reps != null) 'reps': reps,
+      if (weight != null) 'weight': weight,
+      if (distance != null) 'distance': distance,
+      if (durationSeconds != null) 'duration': durationSeconds,
+      if (rpe != null) 'rpe': rpe,
+    };
+  }
+
+  void dispose() {
+    repsController.dispose();
+    weightController.dispose();
+    distanceController.dispose();
+    durationController.dispose();
+    rpeController.dispose();
+  }
+}
