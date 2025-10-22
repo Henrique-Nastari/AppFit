@@ -1,7 +1,9 @@
+// auth/login_page.dart - VERSÃO ATUALIZADA (COM CORREÇÃO DE OVERFLOW)
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'auth_service.dart';
+import '../../../application/auth/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,7 +13,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // --- PARTE 1: O "CÉREBRO" (Sua lógica original, 100% preservada) ---
+  // --- PARTE 1: O "CÉREBRO" (Lógica de Estado e Serviços) ---
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final FocusNode _emailFocus = FocusNode();
@@ -28,10 +30,9 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // Seu método _signIn robusto, com a correção de navegação já aplicada
+  /// Método para login com E-mail e Senha
   Future<void> _signIn() async {
-    // Esconder o teclado para uma melhor experiência do usuário
-    FocusScope.of(context).unfocus();
+    FocusScope.of(context).unfocus(); // Esconder teclado
 
     setState(() => _loading = true);
     try {
@@ -40,11 +41,8 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text,
       );
       if (!mounted) return;
-      // Opcional: a snackbar pode ser removida se a transição de tela for rápida
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Login realizado com sucesso!')),
-      // );
-      // A navegação foi REMOVIDA daqui, pois o AuthGate cuida disso.
+      // O AuthGate cuidará do redirecionamento.
+      
     } on FirebaseAuthException catch (e) {
       String message = 'Erro ao autenticar';
       switch (e.code) {
@@ -74,32 +72,70 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // --- PARTE 2: O "ROSTO" (Seu novo design, agora conectado ao cérebro) ---
+  /// Método para login com Google
+  Future<void> _signInWithGoogle() async {
+    setState(() => _loading = true);
+    try {
+      await _authService.signInWithGoogle();
+      // O AuthGate cuidará do redirecionamento.
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login com Google realizado com sucesso!')),
+      );
+
+    } on FirebaseAuthException catch (e) {
+      String message = e.message ?? 'Erro no login com Google.';
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(message),
+            backgroundColor: Theme.of(context).colorScheme.error),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Ocorreu um erro: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+
+  // --- PARTE 2: O "ROSTO" (Novo Design + Apenas Google) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
+      // CORREÇÃO 1: 'resizeToAvoidBottomInset: false' foi REMOVIDO daqui.
+      // Isso permite que a tela se redimensione para o teclado,
+      // e o SingleChildScrollView abaixo cuidará da rolagem.
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          children: [
-            SizedBox(width: 96.w, height: 100.h),
-            Center(
-              // Lembrete: Adicione 'images/logo.png' nos assets do seu pubspec.yaml
-              child: Image.asset('images/logo.png'),
-            ),
-            SizedBox(height: 120.h),
-            // CONEXÃO: Widgets de UI agora usam os controllers e focus nodes do "cérebro"
-            Textfild(_emailController, _emailFocus, 'Email', Icons.email),
-            SizedBox(height: 15.h),
-            Textfild(_passwordController, _passwordFocus, 'Password', Icons.lock),
-            SizedBox(height: 15.h),
-            forget(),
-            SizedBox(height: 15.h),
-            login(),
-            SizedBox(height: 15.h),
-            Have()
-          ],
+        child: SingleChildScrollView( // CORREÇÃO 2: Adicionado o widget de rolagem
+          child: Column(
+            children: [
+              SizedBox(width: 96.w, height: 100.h),
+              Center(
+                child: Image.asset('images/logo.png'),
+              ),
+              SizedBox(height: 120.h),
+              Textfild(_emailController, _emailFocus, 'Email', Icons.email),
+              SizedBox(height: 15.h),
+              Textfild(_passwordController, _passwordFocus, 'Password', Icons.lock),
+              SizedBox(height: 15.h),
+              forget(),
+              SizedBox(height: 15.h),
+              login(),
+              SizedBox(height: 20.h), 
+              _buildSocialLogins(),
+              SizedBox(height: 15.h),
+              Have(),
+              SizedBox(height: 20.h), // Adiciona um espaço extra no final para rolar
+            ],
+          ),
         ),
       ),
     );
@@ -119,7 +155,6 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           GestureDetector(
-            // CONEXÃO: Usando o sistema de rotas que você já tem e desabilitando durante o loading
             onTap: _loading
                 ? null
                 : () => Navigator.pushNamed(context, '/register'),
@@ -140,7 +175,6 @@ class _LoginPageState extends State<LoginPage> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 10.w),
       child: InkWell(
-        // CONEXÃO: Chamando o método _signIn e desabilitando o toque durante o loading
         onTap: _loading ? null : _signIn,
         child: Container(
           alignment: Alignment.center,
@@ -150,7 +184,6 @@ class _LoginPageState extends State<LoginPage> {
             color: Colors.black,
             borderRadius: BorderRadius.circular(10.r),
           ),
-          // CONEXÃO: Mostrando o indicador de progresso quando _loading for true
           child: _loading
               ? const SizedBox(
                   height: 25,
@@ -173,6 +206,27 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Widget _buildSocialLogins() {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 10.w),
+      child: OutlinedButton.icon(
+        icon: Image.asset('images/google_logo.png', height: 24.h),
+        label: const Text(
+          'Login com Google',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.grey),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+        ),
+        onPressed: _loading ? null : _signInWithGoogle,
+      ),
+    );
+  }
+
   Widget forget() {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 15.w),
@@ -184,7 +238,7 @@ class _LoginPageState extends State<LoginPage> {
               // Lógica para 'Esqueci a senha' pode ser adicionada aqui no futuro
             },
             child: Text(
-              'Esqueceu a senha?',
+              'Esquecer a senha?', // Corrigido para Português
               style: TextStyle(
                 fontSize: 13.sp,
                 color: Colors.blue,

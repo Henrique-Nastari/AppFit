@@ -1,11 +1,16 @@
+// main.dart - VERSÃO FINAL CORRIGIDA
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart'; 
 import 'firebase_options.dart';
-import 'auth/login_page.dart';
-import 'auth/register_page.dart';
-import 'auth/auth_service.dart';
+
+// Imports atualizados para a nova estrutura
+import 'presentation/screens/auth/login_page.dart';
+import 'presentation/screens/auth/register_page.dart';
+import 'application/auth/auth_service.dart';
+import 'presentation/screens/feed/feed_page.dart'; // <-- IMPORT ADICIONADO
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,14 +23,11 @@ class AppFit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ADICIONADO: Wrapper para inicializar o ScreenUtil
-    // Isso permite que você use .w, .h e .sp para tamanhos responsivos
     return ScreenUtilInit(
-      designSize: const Size(375, 812), // Tamanho base do design que você usou
+      designSize: const Size(375, 812), 
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        // Seu MaterialApp original, agora dentro do builder do ScreenUtil
         return MaterialApp(
           title: 'AppFit',
           debugShowCheckedModeBanner: false,
@@ -33,12 +35,12 @@ class AppFit extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
             useMaterial3: true,
           ),
-          // Seu AuthGate continua sendo a porta de entrada, o que é perfeito.
-          home: const AuthGate(),
+          home: const AuthGate(), // AuthGate controla a tela inicial
           routes: {
-            '/home': (context) => HomePage(),
-            '/login': (context) =>  LoginPage(),
-            '/register': (context) =>  RegisterPage(),
+             // Rota '/home' agora também aponta para FeedPage
+            '/home': (context) => const FeedPage(), 
+            '/login': (context) => const LoginPage(),
+            '/register': (context) => const RegisterPage(),
           },
         );
       },
@@ -46,7 +48,7 @@ class AppFit extends StatelessWidget {
   }
 }
 
-// O AuthGate continua perfeito, não precisa de nenhuma mudança.
+// AuthGate CORRIGIDO para mostrar FeedPage
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -60,45 +62,15 @@ class AuthGate extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
+        // CORREÇÃO APLICADA AQUI: Retorna FeedPage se logado
         if (snapshot.hasData) {
-          return HomePage();
+          return const FeedPage(); 
         }
-        return LoginPage();
+        // Retorna LoginPage se não logado (continua igual)
+        return const LoginPage();
       },
     );
   }
 }
 
-// HomePage com as correções que já fizemos.
-class HomePage extends StatelessWidget {
-  HomePage({super.key});
-
-  // CORRIGIDO: AuthService instanciado fora do método build.
-  final AuthService _authService = AuthService();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('🔥 AppFit'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            tooltip: 'Sair',
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // CORRIGIDO: Apenas chama o signOut, o AuthGate cuida do resto.
-              _authService.signOut();
-            },
-          ),
-        ],
-      ),
-      body: const Center(
-        child: Text(
-          'Firebase inicializado com sucesso! Você está autenticado.',
-          style: TextStyle(fontSize: 18),
-        ),
-      ),
-    );
-  }
-}
+// A DEFINIÇÃO ANTIGA DA HomePage FOI COMPLETAMENTE REMOVIDA DESTE ARQUIVO.

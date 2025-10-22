@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart'; // ADICIONADO: Import para o Google Sign-In
 
 /// Serviço de autenticação (Clean Architecture)
 /// Centraliza operações sobre FirebaseAuth, evitando chamadas diretas na UI.
@@ -20,6 +21,40 @@ class AuthService {
       password: password,
     );
     return credential.user;
+  }
+
+  /// NOVO: Login com Google.
+  Future<User?> signInWithGoogle() async {
+    try {
+      // 1. Iniciar o fluxo de login do Google
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      // 2. Se o usuário cancelar o fluxo, retorna nulo
+      if (googleUser == null) {
+        return null;
+      }
+
+      // 3. Obter os detalhes de autenticação do Google
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // 4. Criar uma credencial do Firebase usando os tokens do Google
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // 5. Fazer login no Firebase com essa credencial
+      final userCredential = await _auth.signInWithCredential(credential);
+      return userCredential.user;
+      
+    } on FirebaseAuthException catch (e) {
+      // Repassa o erro do Firebase para a UI
+      rethrow;
+    } catch (e) {
+      // Trata outros erros (ex: falta de internet)
+      throw Exception('Ocorreu um erro no login com Google.');
+    }
   }
 
   /// Criação de conta com e-mail e senha. Opcionalmente define displayName.
