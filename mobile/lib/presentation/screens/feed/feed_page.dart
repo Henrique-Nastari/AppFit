@@ -1,9 +1,11 @@
-// lib/presentation/screens/feed/feed_page.dart
+// lib/presentation/screens/feed/feed_page.dart - ATUALIZADO (com Título de Texto)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../../application/auth/auth_service.dart'; 
-import 'create_post_page.dart'; // Import da tela de criação
+import 'package:google_fonts/google_fonts.dart'; // <-- IMPORT ADICIONADO
+import '../../../application/auth/auth_service.dart'; // Ajuste o import se necessário
+import '../../widgets/feed/post_card.dart';        // Import do PostCard
+import 'create_post_page.dart';
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -17,104 +19,79 @@ class _FeedPageState extends State<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Busca as cores definidas no tema atual (claro ou escuro)
+    final appBarTheme = Theme.of(context).appBarTheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🔥 AppFit Feed'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        // SUBSTITUÍDO: Image.asset por Text com GoogleFonts
+        title: Text(
+          'AppFit',
+          style: GoogleFonts.lobster( // <-- Exemplo com Lobster, pode trocar!
+            fontSize: 28, // Ajuste o tamanho conforme preferir
+            fontWeight: FontWeight.w500, // Peso da fonte
+            // A cor é herdada do foregroundColor abaixo
+          ),
+        ),
+        centerTitle: true, // Centralizado fica melhor com texto
+        backgroundColor: appBarTheme.backgroundColor, // Usa cor do tema
+        foregroundColor: appBarTheme.foregroundColor, // Usa cor do tema (para ícones e texto)
+        elevation: appBarTheme.elevation,             // Usa elevação do tema
         actions: [
           IconButton(
             tooltip: 'Sair',
             icon: const Icon(Icons.logout),
             onPressed: () {
               _authService.signOut();
-              // O AuthGate cuidará do redirecionamento para o login
             },
           ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // O Stream: Ouve a coleção 'posts', ordenando pelos mais recentes primeiro
         stream: FirebaseFirestore.instance
             .collection('posts')
-            .orderBy('createdAt', descending: true) // Mais recentes no topo
+            .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          // 1. Tratamento de Erros e Loading
           if (snapshot.hasError) {
+            print(snapshot.error);
             return const Center(child: Text('Erro ao carregar posts.'));
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
-          // 2. Verifica se há posts
           if (snapshot.data == null || snapshot.data!.docs.isEmpty) {
             return const Center(
               child: Text(
-                'Nenhum post ainda.\nSeja o primeiro a registrar seu treino!',
+                'Nenhum post ainda.\nSeja o primeiro!',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             );
           }
 
-          // 3. Se tudo deu certo, constrói a lista de posts
           final posts = snapshot.data!.docs;
 
           return ListView.builder(
             itemCount: posts.length,
             itemBuilder: (context, index) {
-              // Pegamos os dados do documento atual
               final postDoc = posts[index];
-              // Convertendo para um mapa para facilitar o acesso
-              final postData = postDoc.data() as Map<String, dynamic>; 
-              
-              // Extraindo os dados que queremos mostrar (com segurança)
-              final String caption = postData['caption'] ?? '';
-              final String? imageUrl = postData['imageUrl']; // Pode ser nulo
-              final String userName = postData['userDisplayName'] ?? 'Usuário Anônimo';
-              final Timestamp? timestamp = postData['createdAt']; // Timestamp do Firebase
+              final postData = postDoc.data() as Map<String, dynamic>;
 
-              // TODO: Criar um widget PostCard mais bonito aqui
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(userName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      if (timestamp != null)
-                        Text(
-                          // Formatar a data (pode melhorar depois)
-                          timestamp.toDate().toString().substring(0, 16), 
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      const SizedBox(height: 8),
-                      if (imageUrl != null) 
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8.0),
-                          child: Image.network(imageUrl, fit: BoxFit.cover, width: double.infinity, height: 200)
-                        ),
-                      if (imageUrl != null) const SizedBox(height: 8),
-                      Text(caption),
-                    ],
-                  ),
-                ),
-              );
+              return PostCard(postData: postData);
             },
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navega para a tela de criação que já temos
           Navigator.of(context).push(
             MaterialPageRoute(builder: (context) => const CreatePostPage()),
           );
         },
         tooltip: 'Novo Registro',
         child: const Icon(Icons.add),
+        // Cores do FAB são definidas no tema em main.dart
       ),
     );
   }
