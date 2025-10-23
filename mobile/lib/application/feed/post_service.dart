@@ -28,6 +28,8 @@ class PostService {
         : (user.email != null ? user.email!.split('@').first : 'Atleta');
     postData['userPhotoUrl'] = user.photoURL;
     postData['createdAt'] = FieldValue.serverTimestamp();
+    // Inicializa mapa de reações (opcional)
+    postData['reactionCounts'] = <String, int>{};
 
     // 2. Faz o upload da imagem (se o usuário selecionou uma)
     if (imageFile != null) {

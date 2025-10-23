@@ -9,6 +9,7 @@ class Post {
   final String visibility; // 'public' | 'private'
   final int likeCount;
   final int commentCount;
+  final Map<String, int> reactionCounts;
   final DateTime? createdAt;
 
   const Post({
@@ -20,6 +21,7 @@ class Post {
     this.visibility = 'public',
     this.likeCount = 0,
     this.commentCount = 0,
+    this.reactionCounts = const {},
     this.createdAt,
   });
 
@@ -31,6 +33,7 @@ class Post {
         'visibility': visibility,
         'likeCount': likeCount,
         'commentCount': commentCount,
+        if (reactionCounts.isNotEmpty) 'reactionCounts': reactionCounts,
         'createdAt': FieldValue.serverTimestamp(),
       };
 
@@ -45,6 +48,14 @@ class Post {
       visibility: data['visibility'] as String? ?? 'public',
       likeCount: (data['likeCount'] as num?)?.toInt() ?? 0,
       commentCount: (data['commentCount'] as num?)?.toInt() ?? 0,
+      reactionCounts: () {
+        final raw = data['reactionCounts'];
+        if (raw is Map) {
+          return raw.map<String, int>((k, v) =>
+              MapEntry(k.toString(), (v is num) ? v.toInt() : 0));
+        }
+        return <String, int>{};
+      }(),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }
