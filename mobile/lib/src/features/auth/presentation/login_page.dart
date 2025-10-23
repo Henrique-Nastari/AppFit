@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'auth_service.dart';
+import 'package:flutter/material.dart';
+
+import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -38,19 +39,19 @@ class _LoginPageState extends State<LoginPage> {
       );
       Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
-      String message = 'Erro ao autenticar';
+      var message = 'Erro ao autenticar';
       switch (e.code) {
         case 'invalid-email':
-          message = 'E-mail inválido.';
+          message = 'E-mail invalido.';
           break;
         case 'user-not-found':
-          message = 'Usuário não encontrado.';
+          message = 'Usuario nao encontrado.';
           break;
         case 'wrong-password':
           message = 'Senha incorreta.';
           break;
         case 'user-disabled':
-          message = 'Usuário desabilitado.';
+          message = 'Usuario desabilitado.';
           break;
         default:
           message = e.message ?? message;
@@ -97,7 +98,7 @@ class _LoginPageState extends State<LoginPage> {
                         return 'Informe o e-mail';
                       }
                       if (!value.contains('@')) {
-                        return 'E-mail inválido';
+                        return 'E-mail invalido';
                       }
                       return null;
                     },
@@ -146,7 +147,7 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: _loading
                         ? null
                         : () => Navigator.pushNamed(context, '/register'),
-                    child: const Text('Não tem conta? Cadastre-se'),
+                    child: const Text('Nao tem conta? Cadastre-se'),
                   ),
                 ],
               ),

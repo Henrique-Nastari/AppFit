@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'auth_service.dart';
+import 'package:flutter/material.dart';
+
+import '../services/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -44,19 +45,19 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
-      String message = 'Erro ao registrar';
+      var message = 'Erro ao registrar';
       switch (e.code) {
         case 'email-already-in-use':
-          message = 'E-mail já está em uso';
+          message = 'E-mail ja esta em uso';
           break;
         case 'invalid-email':
-          message = 'E-mail inválido';
+          message = 'E-mail invalido';
           break;
         case 'weak-password':
           message = 'Senha fraca';
           break;
         case 'operation-not-allowed':
-          message = 'Operação não permitida';
+          message = 'Operacao nao permitida';
           break;
         default:
           message = e.message ?? message;
@@ -119,7 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         return 'Informe o e-mail';
                       }
                       if (!value.contains('@')) {
-                        return 'E-mail inválido';
+                        return 'E-mail invalido';
                       }
                       return null;
                     },
@@ -167,7 +168,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         return 'Confirme a senha';
                       }
                       if (value != _passwordController.text) {
-                        return 'As senhas não coincidem';
+                        return 'As senhas nao coincidem';
                       }
                       return null;
                     },
@@ -192,7 +193,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     onPressed: _loading
                         ? null
                         : () => Navigator.pushReplacementNamed(context, '/login'),
-                    child: const Text('Já tem conta? Entrar'),
+                    child: const Text('Ja tem conta? Entrar'),
                   ),
                 ],
               ),

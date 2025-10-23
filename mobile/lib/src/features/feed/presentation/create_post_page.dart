@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
@@ -236,7 +236,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                         decoration: const InputDecoration(
                           labelText: 'Volume (kg)',
                         ),
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ),
                   ],
@@ -432,7 +432,7 @@ class _SetFormRow extends StatelessWidget {
                     decoration: const InputDecoration(
                       labelText: 'Peso (kg)',
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
               ],
@@ -446,7 +446,7 @@ class _SetFormRow extends StatelessWidget {
                     decoration: const InputDecoration(
                       labelText: 'Distancia (m)',
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -466,7 +466,7 @@ class _SetFormRow extends StatelessWidget {
                     decoration: const InputDecoration(
                       labelText: 'RPE',
                     ),
-                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
               ],
