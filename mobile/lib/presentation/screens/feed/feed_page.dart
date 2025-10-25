@@ -1,11 +1,11 @@
-// lib/presentation/screens/feed/feed_page.dart - ATUALIZADO (com Título de Texto)
+// lib/presentation/screens/feed/feed_page.dart - ATUALIZADO (com ValueKey)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // <-- IMPORT ADICIONADO
-import '../../../application/auth/auth_service.dart'; // Ajuste o import se necessário
+import 'package:google_fonts/google_fonts.dart';
+import '../../../application/auth/auth_service.dart'; // Ajuste se necessário
 import '../../widgets/feed/post_card.dart';        // Import do PostCard
-import 'create_post_page.dart';
+import 'create_post_page.dart';                 // Import da tela de criação
 
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
@@ -24,19 +24,17 @@ class _FeedPageState extends State<FeedPage> {
 
     return Scaffold(
       appBar: AppBar(
-        // SUBSTITUÍDO: Image.asset por Text com GoogleFonts
         title: Text(
           'AppFit',
-          style: GoogleFonts.lobster( // <-- Exemplo com Lobster, pode trocar!
-            fontSize: 28, // Ajuste o tamanho conforme preferir
-            fontWeight: FontWeight.w500, // Peso da fonte
-            // A cor é herdada do foregroundColor abaixo
+          style: GoogleFonts.lobster( // Ou a fonte que você escolheu
+            fontSize: 28,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        centerTitle: true, // Centralizado fica melhor com texto
-        backgroundColor: appBarTheme.backgroundColor, // Usa cor do tema
-        foregroundColor: appBarTheme.foregroundColor, // Usa cor do tema (para ícones e texto)
-        elevation: appBarTheme.elevation,             // Usa elevação do tema
+        centerTitle: true,
+        backgroundColor: appBarTheme.backgroundColor,
+        foregroundColor: appBarTheme.foregroundColor,
+        elevation: appBarTheme.elevation,
         actions: [
           IconButton(
             tooltip: 'Sair',
@@ -54,7 +52,7 @@ class _FeedPageState extends State<FeedPage> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            print(snapshot.error);
+            print("Erro no StreamBuilder do Feed: ${snapshot.error}"); // Log para depuração
             return const Center(child: Text('Erro ao carregar posts.'));
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -77,8 +75,17 @@ class _FeedPageState extends State<FeedPage> {
             itemBuilder: (context, index) {
               final postDoc = posts[index];
               final postData = postDoc.data() as Map<String, dynamic>;
+              final postId = postDoc.id; // Pega o ID do documento
 
-              return PostCard(postData: postData);
+              // *** ADIÇÃO DA KEY AQUI ***
+              // Garante que cada PostCard tenha um estado único e seja
+              // reconstruído corretamente ao rolar a lista.
+              return PostCard(
+                key: ValueKey(postId), // <-- ADICIONADO
+                postId: postId,
+                postData: postData,
+              );
+              // *** FIM DA ADIÇÃO DA KEY ***
             },
           );
         },

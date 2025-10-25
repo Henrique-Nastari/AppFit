@@ -1,17 +1,24 @@
-// main.dart - CORRIGIDO (CardThemeData)
+// main.dart - ATUALIZADO (com initializeDateFormatting)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/date_symbol_data_local.dart'; // <-- IMPORT ADICIONADO
 import 'firebase_options.dart';
 import 'presentation/screens/auth/login_page.dart';
 import 'presentation/screens/auth/register_page.dart';
+// import 'application/auth/auth_service.dart'; // Import não usado diretamente aqui
 import 'presentation/screens/feed/feed_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // --- ADICIONADO PARA FORMATAR DATAS EM PT_BR ---
+  await initializeDateFormatting('pt_BR', null);
+  // --- FIM DA ADIÇÃO ---
+
   runApp(const AppFit());
 }
 
@@ -29,8 +36,6 @@ class AppFit extends StatelessWidget {
           title: 'AppFit',
           debugShowCheckedModeBanner: false,
 
-          // --- DEFINIÇÕES DE TEMA ATUALIZADAS ---
-
           // TEMA CLARO (Branco)
           theme: ThemeData(
             brightness: Brightness.light,
@@ -46,15 +51,14 @@ class AppFit extends StatelessWidget {
               brightness: Brightness.light,
             ),
             floatingActionButtonTheme: FloatingActionButtonThemeData(
-               backgroundColor: Colors.grey[800],
-               foregroundColor: Colors.white,
+              backgroundColor: Colors.grey[800],
+              foregroundColor: Colors.white,
             ),
-            // CORREÇÃO AQUI: CardThemeData
             cardTheme: const CardThemeData(
-               elevation: 0.5,
-               surfaceTintColor: Colors.white,
-               shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-               margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+              elevation: 0.5,
+              surfaceTintColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
             ),
             useMaterial3: true,
           ),
@@ -73,17 +77,16 @@ class AppFit extends StatelessWidget {
               seedColor: Colors.grey,
               brightness: Brightness.dark,
             ),
-             floatingActionButtonTheme: FloatingActionButtonThemeData(
-               backgroundColor: Colors.grey[700],
-               foregroundColor: Colors.white,
+            floatingActionButtonTheme: FloatingActionButtonThemeData(
+              backgroundColor: Colors.grey[700],
+              foregroundColor: Colors.white,
             ),
-            // CORREÇÃO AQUI: CardThemeData
             cardTheme: CardThemeData(
-               elevation: 0.5,
-               color: Colors.grey[900],
-               surfaceTintColor: Colors.transparent,
-               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-               margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+              elevation: 0.5,
+              color: Colors.grey[900],
+              surfaceTintColor: Colors.transparent,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
             ),
             useMaterial3: true,
           ),
