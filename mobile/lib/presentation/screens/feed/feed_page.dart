@@ -37,6 +37,13 @@ class _FeedPageState extends State<FeedPage> {
         elevation: appBarTheme.elevation,
         actions: [
           IconButton(
+            tooltip: 'Meus treinos',
+            icon: const Icon(Icons.fitness_center),
+            onPressed: () {
+              Navigator.of(context).pushNamed('/workouts');
+            },
+          ),
+          IconButton(
             tooltip: 'Sair',
             icon: const Icon(Icons.logout),
             onPressed: () {

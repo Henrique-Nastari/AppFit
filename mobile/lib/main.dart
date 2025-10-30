@@ -1,4 +1,4 @@
-// main.dart - ATUALIZADO (com initializeDateFormatting)
+﻿// main.dart - ATUALIZADO (com initializeDateFormatting)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -8,8 +8,9 @@ import 'package:intl/date_symbol_data_local.dart'; // <-- IMPORT ADICIONADO
 import 'firebase_options.dart';
 import 'presentation/screens/auth/login_page.dart';
 import 'presentation/screens/auth/register_page.dart';
-// import 'application/auth/auth_service.dart'; // Import não usado diretamente aqui
+// import 'application/auth/auth_service.dart'; // Import nÃ£o usado diretamente aqui
 import 'presentation/screens/feed/feed_page.dart';
+import 'presentation/screens/workouts/workouts_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +18,7 @@ void main() async {
 
   // --- ADICIONADO PARA FORMATAR DATAS EM PT_BR ---
   await initializeDateFormatting('pt_BR', null);
-  // --- FIM DA ADIÇÃO ---
+  // --- FIM DA ADIÃ‡ÃƒO ---
 
   runApp(const AppFit());
 }
@@ -91,7 +92,7 @@ class AppFit extends StatelessWidget {
             useMaterial3: true,
           ),
 
-          // MODO DE TEMA: Usa a configuração do sistema operacional
+          // MODO DE TEMA: Usa a configuraÃ§Ã£o do sistema operacional
           themeMode: ThemeMode.system,
 
           // --- RESTO DO MaterialApp ---
@@ -100,6 +101,7 @@ class AppFit extends StatelessWidget {
             '/home': (context) => const FeedPage(),
             '/login': (context) => const LoginPage(),
             '/register': (context) => const RegisterPage(),
+            '/workouts': (context) => const WorkoutsPage(),
           },
         );
       },
@@ -129,3 +131,6 @@ class AuthGate extends StatelessWidget {
     );
   }
 }
+
+
+

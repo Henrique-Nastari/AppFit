@@ -1,11 +1,12 @@
-// features/feed/screens/create_post_page.dart - ATUALIZADO (com Câmera)
+﻿// features/feed/screens/create_post_page.dart - ATUALIZADO (com CÃ¢mera)
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../application/feed/post_service.dart'; 
+import '../../../models/workout.dart';
+import '../../../services/firestore_repository.dart';
 
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
@@ -15,7 +16,7 @@ class CreatePostPage extends StatefulWidget {
 }
 
 class _CreatePostPageState extends State<CreatePostPage> {
-  // --- A LÓGICA DE UI E FORMULÁRIO (MANTIDA) ---
+  // --- A LÃ“GICA DE UI E FORMULÃRIO (MANTIDA) ---
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _captionController = TextEditingController();
@@ -27,11 +28,13 @@ class _CreatePostPageState extends State<CreatePostPage> {
   final List<_ExerciseFormData> _exercises = [];
   bool _isSubmitting = false;
 
-  // --- NOSSAS ADIÇÕES (MANTIDAS) ---
+  // --- NOSSAS ADICOES (MANTIDAS) ---
   final PostService _postService = PostService();
+  final FirestoreRepository _firestoreRepository = FirestoreRepository();
+  Workout? _selectedWorkout;
   File? _imageFile;
 
-  // --- MÉTODOS DE CICLO DE VIDA (MANTIDOS) ---
+  // --- METODOS DE CICLO DE VIDA (MANTIDOS) ---
   @override
   void initState() {
     super.initState();
@@ -52,9 +55,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
     super.dispose();
   }
 
-  // --- NOSSAS NOVAS FUNÇÕES ---
-
-  /// **NOVO:** Mostra as opções (Câmera ou Galeria)
+  // --- NOSSAS NOVAS FUNÃ‡Ã•ES ---
+  // --- NOSSAS NOVAS FUNCOES ---
+  /// **NOVO:** Mostra as opcoes (camera ou galeria)
   Future<void> _showImagePickerOptions() async {
     // Esconde o teclado se estiver aberto
     FocusScope.of(context).unfocus();
@@ -67,7 +70,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
             children: <Widget>[
               ListTile(
                 leading: const Icon(Icons.photo_library),
-                title: const Text('Selecionar da Galeria'),
+                title: const Text('Selecionar da galeria'),
                 onTap: () {
                   _pickImage(ImageSource.gallery);
                   Navigator.of(context).pop();
@@ -75,7 +78,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo_camera),
-                title: const Text('Tirar Foto com a Câmera'),
+                title: const Text('Tirar foto com a camera'),
                 onTap: () {
                   _pickImage(ImageSource.camera);
                   Navigator.of(context).pop();
@@ -93,7 +96,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedFile = await picker.pickImage(
       source: source,
-      imageQuality: 70, // Comprime a imagem para economizar espaço
+      imageQuality: 70, // Comprime a imagem para economizar espaÃ§o
     );
 
     if (pickedFile != null) {
@@ -102,8 +105,128 @@ class _CreatePostPageState extends State<CreatePostPage> {
       });
     }
   }
+  Future<void> _openWorkoutPicker() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Faca login para acessar seus treinos salvos.')),
+      );
+      return;
+    }
 
-  /// Função de "Publicar" (Refatorada)
+    final selected = await showModalBottomSheet<Workout>(
+      context: context,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: StreamBuilder<List<Workout>>(
+              stream: _firestoreRepository.listWorkouts(ownerId: user.uid, limit: 50),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text('Erro ao carregar treinos: '),
+                    ),
+                  );
+                }
+
+                final workouts = snapshot.data ?? const <Workout>[];
+                if (workouts.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('Nenhum treino salvo ainda.'),
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemBuilder: (context, index) {
+                    final workout = workouts[index];
+                    final summary = workout.summary();
+                    final exerciseCount = summary['exerciseCount'] as int? ?? 0;
+                    final totalSets = summary['totalSets'] as int? ?? 0;
+
+                    return ListTile(
+                      title: Text(workout.title),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (workout.notes != null && workout.notes!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                workout.notes!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              '$exerciseCount exercicio(s) | $totalSets serie(s)',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                      onTap: () => Navigator.of(bottomSheetContext).pop(workout),
+                    );
+                  },
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemCount: workouts.length,
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted || selected == null) return;
+    _applyWorkoutTemplate(selected);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Treino "${selected.title}" carregado.')),
+    );
+  }
+
+  void _applyWorkoutTemplate(Workout workout) {
+    final newExercises = workout.exercises.isEmpty
+        ? <_ExerciseFormData>[_ExerciseFormData()]
+        : workout.exercises
+            .map(_ExerciseFormData.fromWorkoutExercise)
+            .toList();
+
+    for (final exercise in _exercises) {
+      exercise.dispose();
+    }
+
+    setState(() {
+      _selectedWorkout = workout;
+      if (_titleController.text.trim().isEmpty) {
+        _titleController.text = workout.title;
+      }
+      _exercises
+        ..clear()
+        ..addAll(newExercises);
+    });
+  }
+
+  void _clearSelectedWorkout() {
+    setState(() {
+      _selectedWorkout = null;
+    });
+  }
+
+  /// Funcao de "Publicar" (Refatorada)
   Future<void> _handleSubmit() async {
     if (_isSubmitting) return;
     final form = _formKey.currentState;
@@ -137,7 +260,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     }
   }
 
-  /// Constrói o mapa de dados (Mantido)
+  /// Constroi o mapa de dados (Mantido)
   Map<String, dynamic> _buildPostData() {
     final caption = _captionController.text.trim();
     final title = _titleController.text.trim();
@@ -178,7 +301,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   }
 
 
-  // --- FUNÇÕES DE UI (MANTIDAS) ---
+  // --- FUNCOES DE UI (MANTIDAS) ---
   void _addExercise() {
     setState(() {
       _exercises.add(_ExerciseFormData());
@@ -198,7 +321,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     });
   }
 
-  // --- MÉTODO BUILD (COM UMA MODIFICAÇÃO NO onTap) ---
+  // --- MÃ‰TODO BUILD (COM UMA MODIFICAÃ‡ÃƒO NO onTap) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -227,10 +350,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 
-                // --- SEÇÃO DE FOTO (MODIFICADA) ---
+                // --- SEÃ‡ÃƒO DE FOTO (MODIFICADA) ---
                 _buildHeadline('Foto do Treino (Opcional)'),
                 GestureDetector(
-                  onTap: _showImagePickerOptions, // <-- MUDANÇA AQUI
+                  onTap: _showImagePickerOptions, // <-- MUDANÃ‡A AQUI
                   child: Container(
                     height: 200,
                     width: double.infinity,
@@ -254,9 +377,25 @@ class _CreatePostPageState extends State<CreatePostPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // --- FIM DA SEÇÃO ---
+                // --- FIM DA SEÃ‡ÃƒO ---
 
                 _buildHeadline('Detalhes principais'),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: _openWorkoutPicker,
+                    icon: const Icon(Icons.library_books),
+                    label: const Text('Carregar treino salvo'),
+                  ),
+                ),
+                if (_selectedWorkout != null) ...[
+                  const SizedBox(height: 12),
+                  _SelectedWorkoutBanner(
+                    workout: _selectedWorkout!,
+                    onClear: _clearSelectedWorkout,
+                  ),
+                ],
                 TextFormField(
                   controller: _titleController,
                   decoration: const InputDecoration(
@@ -350,7 +489,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     );
   }
 
-  // --- O RESTO DO CÓDIGO (NENHUMA MUDANÇA ABAIXO DAQUI) ---
+  // --- O RESTO DO CÃ“DIGO (NENHUMA MUDANÃ‡A ABAIXO DAQUI) ---
 
   List<Widget> _buildExerciseForms() {
     return List<Widget>.generate(_exercises.length, (index) {
@@ -442,6 +581,65 @@ class _CreatePostPageState extends State<CreatePostPage> {
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleLarge,
+      ),
+    );
+  }
+}
+
+class _SelectedWorkoutBanner extends StatelessWidget {
+  const _SelectedWorkoutBanner({
+    required this.workout,
+    required this.onClear,
+  });
+
+  final Workout workout;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = workout.summary();
+    final exerciseCount = summary['exerciseCount'] as int? ?? 0;
+    final totalSets = summary['totalSets'] as int? ?? 0;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    workout.title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$exerciseCount exercicio(s) | $totalSets serie(s)',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (workout.notes != null && workout.notes!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        workout.notes!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: onClear,
+              child: const Text('Remover'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -550,16 +748,41 @@ class _SetFormRow extends StatelessWidget {
 }
 
 class _ExerciseFormData {
-  _ExerciseFormData() {
-    addSet();
+  _ExerciseFormData({
+    String? initialName,
+    String? initialNotes,
+    List<_SetFormData>? initialSets,
+  }) {
+    if (initialName != null && initialName.isNotEmpty) {
+      nameController.text = initialName;
+    }
+    if (initialNotes != null && initialNotes.isNotEmpty) {
+      notesController.text = initialNotes;
+    }
+    if (initialSets != null && initialSets.isNotEmpty) {
+      sets.addAll(initialSets);
+    } else {
+      addSet();
+    }
+  }
+
+  factory _ExerciseFormData.fromWorkoutExercise(Exercise exercise) {
+    final initialSets = exercise.sets.isEmpty
+        ? null
+        : exercise.sets.map(_SetFormData.fromSetEntry).toList();
+    return _ExerciseFormData(
+      initialName: exercise.name,
+      initialNotes: exercise.notes,
+      initialSets: initialSets,
+    );
   }
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
   final List<_SetFormData> sets = [];
 
-  void addSet() {
-    sets.add(_SetFormData());
+  void addSet({_SetFormData? set}) {
+    sets.add(set ?? _SetFormData());
   }
 
   void removeSet(int index) {
@@ -594,6 +817,28 @@ class _ExerciseFormData {
 }
 
 class _SetFormData {
+  _SetFormData({
+    int? reps,
+    double? weight,
+    double? distance,
+    int? duration,
+    double? rpe,
+  }) {
+    if (reps != null) repsController.text = reps.toString();
+    if (weight != null) weightController.text = weight.toString();
+    if (distance != null) distanceController.text = distance.toString();
+    if (duration != null) durationController.text = duration.toString();
+    if (rpe != null) rpeController.text = rpe.toString();
+  }
+
+  factory _SetFormData.fromSetEntry(SetEntry entry) {
+    return _SetFormData(
+      reps: entry.reps,
+      weight: entry.weightKg,
+      duration: entry.durationSeconds,
+    );
+  }
+
   final TextEditingController repsController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
   final TextEditingController distanceController = TextEditingController();
@@ -624,3 +869,8 @@ class _SetFormData {
     rpeController.dispose();
   }
 }
+
+
+
+
+
