@@ -137,6 +137,7 @@ class _WorkoutEditorPageState extends State<WorkoutEditorPage> {
                   exerciseForm: _exercises[i],
                   canRemove: _exercises.length > 1,
                   onRemove: () => _removeExercise(i),
+                  onChanged: () => setState(() {}),
                 ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -169,14 +170,17 @@ class _WorkoutExerciseCard extends StatelessWidget {
     required this.exerciseForm,
     required this.canRemove,
     required this.onRemove,
+    required this.onChanged,
   });
 
   final _WorkoutExerciseForm exerciseForm;
   final VoidCallback onRemove;
   final bool canRemove;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -218,6 +222,36 @@ class _WorkoutExerciseCard extends StatelessWidget {
               maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
             ),
+            const SizedBox(height: 16),
+            Text(
+              'Series',
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: 8),
+            ...List.generate(exerciseForm.sets.length, (index) {
+              final setForm = exerciseForm.sets[index];
+              return _WorkoutSetTile(
+                key: ValueKey(setForm),
+                index: index,
+                setForm: setForm,
+                onRemove: () {
+                  exerciseForm.removeSet(index);
+                  onChanged();
+                },
+                canRemove: exerciseForm.sets.length > 1,
+              );
+            }),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  exerciseForm.addSet();
+                  onChanged();
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Adicionar serie'),
+              ),
+            ),
           ],
         ),
       ),
@@ -226,22 +260,158 @@ class _WorkoutExerciseCard extends StatelessWidget {
 }
 
 class _WorkoutExerciseForm {
+  _WorkoutExerciseForm() {
+    addSet();
+  }
+
   final TextEditingController nameController = TextEditingController();
   final TextEditingController notesController = TextEditingController();
+  final List<_WorkoutSetForm> sets = [];
+
+  void addSet() {
+    sets.add(_WorkoutSetForm());
+  }
+
+  void removeSet(int index) {
+    if (sets.length == 1) return;
+    sets.removeAt(index).dispose();
+  }
 
   Exercise? toExercise() {
     final name = nameController.text.trim();
     if (name.isEmpty) return null;
     final notes = notesController.text.trim();
+    final mappedSets = sets
+        .map((set) => set.toSetEntry())
+        .where((set) => set != null)
+        .cast<SetEntry>()
+        .toList();
     return Exercise(
       name: name,
       notes: notes.isEmpty ? null : notes,
-      sets: const [],
+      sets: mappedSets,
     );
   }
 
   void dispose() {
     nameController.dispose();
     notesController.dispose();
+    for (final set in sets) {
+      set.dispose();
+    }
+  }
+}
+
+class _WorkoutSetTile extends StatelessWidget {
+  const _WorkoutSetTile({
+    super.key,
+    required this.index,
+    required this.setForm,
+    required this.onRemove,
+    required this.canRemove,
+  });
+
+  final int index;
+  final _WorkoutSetForm setForm;
+  final VoidCallback onRemove;
+  final bool canRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.surfaceVariant.withOpacity(0.5);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Serie ${index + 1}',
+                style: theme.textTheme.titleSmall,
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: canRemove ? onRemove : null,
+                tooltip: 'Remover serie',
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: setForm.repsController,
+                  decoration: const InputDecoration(
+                    labelText: 'Repeticoes',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: setForm.weightController,
+                  decoration: const InputDecoration(
+                    labelText: 'Peso (kg)',
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: setForm.restController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descanso (seg)',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkoutSetForm {
+  final TextEditingController repsController = TextEditingController();
+  final TextEditingController weightController = TextEditingController();
+  final TextEditingController restController = TextEditingController();
+
+  SetEntry? toSetEntry() {
+    final reps = int.tryParse(repsController.text.trim());
+    final weight = double.tryParse(weightController.text.trim());
+    final rest = int.tryParse(restController.text.trim());
+
+    if (reps == null && weight == null && rest == null) {
+      return null;
+    }
+
+    return SetEntry(
+      reps: reps,
+      weightKg: weight,
+      restSeconds: rest,
+    );
+  }
+
+  void dispose() {
+    repsController.dispose();
+    weightController.dispose();
+    restController.dispose();
   }
 }
