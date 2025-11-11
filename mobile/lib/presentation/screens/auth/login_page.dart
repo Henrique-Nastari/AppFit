@@ -1,4 +1,4 @@
-// auth/login_page.dart - VERSÃO ATUALIZADA (COM CORREÇÃO DE OVERFLOW)
+// lib/presentation/screens/auth/login_page.dart - CORRIGIDO (com Navegação)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,13 +13,12 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // --- PARTE 1: O "CÉREBRO" (Lógica de Estado e Serviços) ---
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   bool _loading = false;
-  final _authService = AuthService();
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -32,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
 
   /// Método para login com E-mail e Senha
   Future<void> _signIn() async {
-    FocusScope.of(context).unfocus(); // Esconder teclado
+    FocusScope.of(context).unfocus();
 
     setState(() => _loading = true);
     try {
@@ -40,9 +39,17 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
       if (!mounted) return;
-      // O AuthGate cuidará do redirecionamento.
-      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login realizado com sucesso!')),
+      );
+
+      // --- CORREÇÃO DE NAVEGAÇÃO ---
+      // Fecha a página de login para revelar o AuthGate (que mostrará o Feed)
+      Navigator.of(context).pop();
+      // --- FIM DA CORREÇÃO ---
+
     } on FirebaseAuthException catch (e) {
       String message = 'Erro ao autenticar';
       switch (e.code) {
@@ -50,7 +57,8 @@ class _LoginPageState extends State<LoginPage> {
           message = 'O formato do e-mail é inválido.';
           break;
         case 'user-not-found':
-          message = 'Nenhum usuário encontrado para este e-mail.';
+        case 'invalid-credential': // Nova versão do Firebase usa este código
+          message = 'Usuário não encontrado ou senha incorreta.';
           break;
         case 'wrong-password':
           message = 'Senha incorreta. Por favor, tente novamente.';
@@ -77,12 +85,16 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     try {
       await _authService.signInWithGoogle();
-      // O AuthGate cuidará do redirecionamento.
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login com Google realizado com sucesso!')),
       );
+
+      // --- CORREÇÃO DE NAVEGAÇÃO ---
+      // Fecha a página de login para revelar o AuthGate (que mostrará o Feed)
+      Navigator.of(context).pop();
+      // --- FIM DA CORREÇÃO ---
 
     } on FirebaseAuthException catch (e) {
       String message = e.message ?? 'Erro no login com Google.';
@@ -105,16 +117,13 @@ class _LoginPageState extends State<LoginPage> {
   }
 
 
-  // --- PARTE 2: O "ROSTO" (Novo Design + Apenas Google) ---
+  // --- PARTE 2: O "ROSTO" (UI) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // CORREÇÃO 1: 'resizeToAvoidBottomInset: false' foi REMOVIDO daqui.
-      // Isso permite que a tela se redimensione para o teclado,
-      // e o SingleChildScrollView abaixo cuidará da rolagem.
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white, // Fundo branco para tema claro
       body: SafeArea(
-        child: SingleChildScrollView( // CORREÇÃO 2: Adicionado o widget de rolagem
+        child: SingleChildScrollView( // Permite rolagem quando o teclado aparece
           child: Column(
             children: [
               SizedBox(width: 96.w, height: 100.h),
@@ -129,11 +138,11 @@ class _LoginPageState extends State<LoginPage> {
               forget(),
               SizedBox(height: 15.h),
               login(),
-              SizedBox(height: 20.h), 
+              SizedBox(height: 20.h),
               _buildSocialLogins(),
               SizedBox(height: 15.h),
               Have(),
-              SizedBox(height: 20.h), // Adiciona um espaço extra no final para rolar
+              SizedBox(height: 20.h), // Espaço extra no final
             ],
           ),
         ),
@@ -145,7 +154,7 @@ class _LoginPageState extends State<LoginPage> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 10.w),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center, // Centralizado
         children: [
           Text(
             "Não tem uma conta?  ",
@@ -157,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
           GestureDetector(
             onTap: _loading
                 ? null
-                : () => Navigator.pushNamed(context, '/register'),
+                : () => Navigator.pushNamed(context, '/register'), // Navega para a rota de registro
             child: Text(
               "Sign up ",
               style: TextStyle(
@@ -186,21 +195,21 @@ class _LoginPageState extends State<LoginPage> {
           ),
           child: _loading
               ? const SizedBox(
-                  height: 25,
-                  width: 25,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 3,
-                  ),
-                )
+            height: 25,
+            width: 25,
+            child: CircularProgressIndicator(
+              color: Colors.white,
+              strokeWidth: 3,
+            ),
+          )
               : Text(
-                  'Login',
-                  style: TextStyle(
-                    fontSize: 23.sp,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+            'Login',
+            style: TextStyle(
+              fontSize: 23.sp,
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ),
     );
@@ -216,11 +225,12 @@ class _LoginPageState extends State<LoginPage> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.grey),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 12.h),
+            side: const BorderSide(color: Colors.grey),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            padding: EdgeInsets.symmetric(vertical: 12.h),
+            minimumSize: Size(double.infinity, 44.h) // Ocupa largura total
         ),
         onPressed: _loading ? null : _signInWithGoogle,
       ),
@@ -235,10 +245,10 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           GestureDetector(
             onTap: () {
-              // Lógica para 'Esqueci a senha' pode ser adicionada aqui no futuro
+              // todo: Lógica para 'Esqueci a senha'
             },
             child: Text(
-              'Esquecer a senha?', // Corrigido para Português
+              'Esqueceu a senha?',
               style: TextStyle(
                 fontSize: 13.sp,
                 color: Colors.blue,
@@ -259,7 +269,7 @@ class _LoginPageState extends State<LoginPage> {
         style: TextStyle(fontSize: 18.sp, color: Colors.black),
         controller: controll,
         focusNode: focusNode,
-        obscureText: typename == 'Password', // Esconde a senha
+        obscureText: typename == 'Password',
         decoration: InputDecoration(
           hintText: typename,
           prefixIcon: Icon(
@@ -267,7 +277,7 @@ class _LoginPageState extends State<LoginPage> {
             color: focusNode.hasFocus ? Colors.black : Colors.grey[600],
           ),
           contentPadding:
-              EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
+          EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10.r),
             borderSide: BorderSide(

@@ -1,4 +1,4 @@
-// auth/register_page.dart - VERSÃO COMPLETA E CORRIGIDA (Bug do OutlinedButton)
+// lib/presentation/screens/auth/register_page.dart - CORRIGIDO (com Navegação)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,26 +13,21 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  // --- PARTE 1: O "CÉREBRO" (Sua lógica original + Google) ---
-  final _formKey = GlobalKey<FormState>(); // Essencial para validação
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   final _authService = AuthService();
-  
+
   bool _loading = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  
-  // FocusNodes para uma melhor UX (pular para o próximo campo)
+
   final FocusNode _nameFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmFocus = FocusNode();
-
-  // Flag para UI do loading
-  bool _signInWithGoogleInvoked = false;
 
   @override
   void dispose() {
@@ -49,16 +44,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
   /// Método para cadastro com E-mail e Senha
   Future<void> _register() async {
-    // Valida o formulário antes de continuar
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
-    FocusScope.of(context).unfocus(); // Esconder teclado
-    setState(() { 
-      _loading = true; 
-      _signInWithGoogleInvoked = false; // Garante que o loading certo apareça
-    });
+
+    FocusScope.of(context).unfocus();
+    setState(() => _loading = true);
 
     try {
       await _authService.createAccount(
@@ -66,9 +57,17 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _passwordController.text,
         displayName: _nameController.text.trim(),
       );
+
       if (!mounted) return;
-      // O AuthGate cuidará do redirecionamento para a Home.
-      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conta criada com sucesso!')),
+      );
+
+      // --- CORREÇÃO DE NAVEGAÇÃO ---
+      // Fecha a página de cadastro, revelando o AuthGate (que mostrará o Feed)
+      Navigator.of(context).pop();
+      // --- FIM DA CORREÇÃO ---
+
     } on FirebaseAuthException catch (e) {
       String message = 'Erro ao registrar';
       switch (e.code) {
@@ -79,7 +78,7 @@ class _RegisterPageState extends State<RegisterPage> {
           message = 'O formato do e-mail é inválido.';
           break;
         case 'weak-password':
-          message = 'A senha é muito fraca.';
+          message = 'A senha é muito fraca (mínimo 6 caracteres).';
           break;
         default:
           message = e.message ?? 'Ocorreu um erro desconhecido.';
@@ -97,13 +96,20 @@ class _RegisterPageState extends State<RegisterPage> {
 
   /// Método para cadastro/login com Google
   Future<void> _signInWithGoogle() async {
-    setState(() { 
-      _loading = true; 
-      _signInWithGoogleInvoked = true; // Garante que o loading certo apareça
-    });
+    setState(() => _loading = true);
     try {
       await _authService.signInWithGoogle();
-      // O AuthGate cuidará do redirecionamento.
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login com Google realizado com sucesso!')),
+      );
+
+      // --- CORREÇÃO DE NAVEGAÇÃO ---
+      // Fecha a página de cadastro, revelando o AuthGate (que mostrará o Feed)
+      Navigator.of(context).pop();
+      // --- FIM DA CORREÇÃO ---
+
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -116,7 +122,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // --- PARTE 2: O "ROSTO" (Novo Design adaptado para Cadastro) ---
+  // --- PARTE 2: O "ROSTO" (UI) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,7 +131,7 @@ class _RegisterPageState extends State<RegisterPage> {
         child: SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 10.w),
-            child: Form( // Usamos um Form para a validação
+            child: Form(
               key: _formKey,
               child: Column(
                 children: [
@@ -143,8 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                   SizedBox(height: 30.h),
-                  
-                  // Campo Nome
+
                   _buildTextFormField(
                     controller: _nameController,
                     focusNode: _nameFocus,
@@ -159,8 +164,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     },
                   ),
                   SizedBox(height: 15.h),
-                  
-                  // Campo Email
+
                   _buildTextFormField(
                     controller: _emailController,
                     focusNode: _emailFocus,
@@ -173,14 +177,13 @@ class _RegisterPageState extends State<RegisterPage> {
                         return 'Por favor, informe seu e-mail';
                       }
                       if (!value.contains('@') || !value.contains('.')) {
-                         return 'Por favor, insira um e-mail válido';
+                        return 'Por favor, insira um e-mail válido';
                       }
                       return null;
                     },
                   ),
                   SizedBox(height: 15.h),
 
-                  // Campo Senha
                   _buildTextFormField(
                     controller: _passwordController,
                     focusNode: _passwordFocus,
@@ -202,7 +205,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   SizedBox(height: 15.h),
 
-                  // Campo Confirmar Senha
                   _buildTextFormField(
                     controller: _confirmController,
                     focusNode: _confirmFocus,
@@ -238,10 +240,9 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  /// Helper para o botão de Criar Conta
   Widget _buildRegisterButton() {
     return InkWell(
-      onTap: _loading ? null : _register, // Chama a validação e o cadastro
+      onTap: _loading ? null : _register,
       child: Container(
         alignment: Alignment.center,
         width: double.infinity,
@@ -250,70 +251,46 @@ class _RegisterPageState extends State<RegisterPage> {
           color: Colors.black,
           borderRadius: BorderRadius.circular(10.r),
         ),
-        child: _loading && !_signInWithGoogleInvoked // Mostra loading só do botão de email
+        child: _loading
             ? const SizedBox(
-                height: 25,
-                width: 25,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
-              )
+          height: 25,
+          width: 25,
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: 3,
+          ),
+        )
             : Text(
-                'Criar Conta',
-                style: TextStyle(
-                  fontSize: 23.sp,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-      ),
-    );
-  }
-  
-  /// Helper para o botão de Login com Google
-  Widget _buildSocialLogins() {
-    // *** CORREÇÃO APLICADA AQUI ***
-    // Trocado de OutlinedButton.icon para OutlinedButton
-    // e construído o child manualmente.
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Colors.grey),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.r),
+          'Criar Conta',
+          style: TextStyle(
+            fontSize: 23.sp,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        padding: EdgeInsets.symmetric(vertical: 12.h),
-        // Define uma altura mínima para o botão não pular
-        minimumSize: Size(double.infinity, 48.h) 
       ),
-      onPressed: _loading ? null : _signInWithGoogle,
-      child: _loading && _signInWithGoogleInvoked // Mostra loading só do botão do google
-          ? const SizedBox(
-              height: 24, // Tamanho consistente
-              width: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-              ),
-            )
-          : Row( // Constrói o conteúdo manualmente
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.asset('images/google_logo.png', height: 24.h),
-                SizedBox(width: 10.w),
-                Text(
-                  'Cadastrar com Google',
-                  style: TextStyle(
-                    color: Colors.black, 
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.sp, // Tamanho de fonte consistente
-                  ),
-                ),
-              ],
-            ),
     );
   }
 
-  /// Helper para o link "Já tem conta?"
+  Widget _buildSocialLogins() {
+    return OutlinedButton.icon(
+      icon: Image.asset('images/google_logo.png', height: 24.h),
+      label: const Text(
+        'Cadastrar com Google',
+        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+      ),
+      style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.grey),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          padding: EdgeInsets.symmetric(vertical: 12.h),
+          minimumSize: Size(double.infinity, 44.h)
+      ),
+      onPressed: _loading ? null : _signInWithGoogle,
+    );
+  }
+
   Widget _buildLoginLink() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -328,7 +305,7 @@ class _RegisterPageState extends State<RegisterPage> {
         GestureDetector(
           onTap: _loading
               ? null
-              : () => Navigator.pushReplacementNamed(context, '/login'), // Manda para o login
+              : () => Navigator.of(context).pop(), // Apenas fecha a tela de cadastro
           child: Text(
             "Login ",
             style: TextStyle(
@@ -341,7 +318,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  /// Helper para criar os TextFormFields padronizados
   Widget _buildTextFormField({
     required TextEditingController controller,
     required FocusNode focusNode,
@@ -359,15 +335,14 @@ class _RegisterPageState extends State<RegisterPage> {
       focusNode: focusNode,
       keyboardType: keyboardType,
       obscureText: obscureText,
-      textInputAction: nextFocusNode != null 
-          ? TextInputAction.next 
+      textInputAction: nextFocusNode != null
+          ? TextInputAction.next
           : TextInputAction.done,
       onFieldSubmitted: (_) {
         if (nextFocusNode != null) {
           FocusScope.of(context).requestFocus(nextFocusNode);
         } else {
-          // Só tenta registrar se não estiver carregando
-          if(!_loading) _register(); 
+          if(!_loading) _register();
         }
       },
       decoration: InputDecoration(
@@ -378,12 +353,12 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         suffixIcon: isPassword
             ? IconButton(
-                icon: Icon(
-                  obscureText ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.grey,
-                ),
-                onPressed: onObscureToggle,
-              )
+          icon: Icon(
+            obscureText ? Icons.visibility : Icons.visibility_off,
+            color: Colors.grey,
+          ),
+          onPressed: onObscureToggle,
+        )
             : null,
         contentPadding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
         enabledBorder: OutlineInputBorder(
