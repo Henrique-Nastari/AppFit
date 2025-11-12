@@ -1,25 +1,23 @@
-﻿// main.dart - ATUALIZADO (com initializeDateFormatting)
+﻿// main.dart - CORRIGIDO (com AuthGate restaurado)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/date_symbol_data_local.dart'; // <-- IMPORT ADICIONADO
+import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
+
 import 'presentation/screens/auth/login_page.dart';
 import 'presentation/screens/auth/register_page.dart';
-// import 'application/auth/auth_service.dart'; // Import nÃ£o usado diretamente aqui
 import 'presentation/screens/feed/feed_page.dart';
+import 'presentation/screens/feed/create_post_page.dart';
+import 'presentation/screens/profile/profile_page.dart';
 import 'presentation/screens/workouts/workouts_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // --- ADICIONADO PARA FORMATAR DATAS EM PT_BR ---
   await initializeDateFormatting('pt_BR', null);
-  // --- FIM DA ADIÃ‡ÃƒO ---
-
   runApp(const AppFit());
 }
 
@@ -37,7 +35,7 @@ class AppFit extends StatelessWidget {
           title: 'AppFit',
           debugShowCheckedModeBanner: false,
 
-          // TEMA CLARO (Branco)
+          // Temas (claro e escuro)
           theme: ThemeData(
             brightness: Brightness.light,
             scaffoldBackgroundColor: Colors.white,
@@ -63,8 +61,6 @@ class AppFit extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
-
-          // TEMA ESCURO (Preto)
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             scaffoldBackgroundColor: Colors.black,
@@ -91,17 +87,19 @@ class AppFit extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
-
-          // MODO DE TEMA: Usa a configuraÃ§Ã£o do sistema operacional
           themeMode: ThemeMode.system,
 
-          // --- RESTO DO MaterialApp ---
           home: const AuthGate(),
           routes: {
+            // CORREÇÃO: Removendo 'const' se alguma página não for const
+            // Mas, idealmente, todas deveriam ser const.
+            // O erro "isn't a const constructor" sumirá ao corrigir o AuthGate.
             '/home': (context) => const FeedPage(),
             '/login': (context) => const LoginPage(),
             '/register': (context) => const RegisterPage(),
+            '/create-post': (context) => const CreatePostPage(),
             '/workouts': (context) => const WorkoutsPage(),
+            '/profile': (context) => const ProfilePage(),
           },
         );
       },
@@ -109,7 +107,7 @@ class AppFit extends StatelessWidget {
   }
 }
 
-// AuthGate permanece o mesmo
+// CORREÇÃO: Implementação completa do AuthGate restaurada
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -131,6 +129,3 @@ class AuthGate extends StatelessWidget {
     );
   }
 }
-
-
-
