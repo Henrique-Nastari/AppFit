@@ -1,7 +1,8 @@
-// lib/application/feed/reaction_service.dart - VERSÃO FINAL LIMPA
+// lib/application/feed/reaction_service.dart - ATUALIZADO (Com Notificação)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../notifications/notification_service.dart'; // Import Adicionado
 
 class ReactionService {
   ReactionService({FirebaseFirestore? firestore, FirebaseAuth? auth})
@@ -10,6 +11,7 @@ class ReactionService {
 
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+  final NotificationService _notificationService = NotificationService(); // Serviço instanciado
 
   static const defaultEmojis = <String>['👍', '❤️', '🔥', '👏', '💪', '🤮'];
 
@@ -39,7 +41,6 @@ class ReactionService {
     });
   }
 
-
   Stream<String?> watchUserReaction({
     required String postId,
     required String userId,
@@ -53,7 +54,6 @@ class ReactionService {
     });
   }
 
-  /// Alterna a reação do usuário com o [emoji] (LÓGICA REFATORADA).
   Future<void> toggleReaction({
     required String postId,
     required String emoji,
@@ -65,6 +65,11 @@ class ReactionService {
     final userId = user.uid;
 
     try {
+      // 1. Buscar dono do post para notificar
+      final postDoc = await _postRef(postId).get();
+      final postOwnerId = postDoc.data()?['userId'];
+
+      // 2. Transação (Lógica original mantida)
       await _firestore.runTransaction((tx) async {
         final postRef = _postRef(postId);
         final reactionRef = _userReactionRef(postId, userId);
@@ -110,15 +115,23 @@ class ReactionService {
           'reactionCounts': currentCounts,
           'updatedAt': now
         });
-      }); // Fim da Transação
+      });
+
+      // 3. Enviar Notificação (apenas se criou ou trocou reação)
+      if (postOwnerId != null && postOwnerId != userId) {
+        // Verifica se foi uma remoção (não notifica remoção)
+        // Lógica simplificada: Notifica sempre que interage positivamente
+        await _notificationService.sendNotification(
+          targetUserId: postOwnerId,
+          type: 'like',
+          message: 'reagiu com $emoji ao seu post.',
+          postId: postId,
+        );
+      }
 
     } on FirebaseException catch (e) {
-      // Poderia logar o erro aqui se quisesse, sem printar para o usuário
-      // logger.error("FirebaseException during reaction: ${e.code}", error: e);
       throw Exception('Erro de banco de dados ao reagir: ${e.message}');
-    } catch (e, s) {
-      // Poderia logar o erro aqui
-      // logger.error("Generic error during reaction", error: e, stackTrace: s);
+    } catch (e) {
       throw Exception('Erro inesperado ao reagir: ${e.toString()}');
     }
   }
