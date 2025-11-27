@@ -1,8 +1,9 @@
-// lib/presentation/screens/auth/register_page.dart - CORRIGIDO (com Navegação)
+// lib/presentation/screens/auth/register_page.dart - DESIGN STITCH
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart'; // Fonte Epilogue
 import '../../../application/auth/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  // --- PARTE 1: A LÓGICA (100% INTACTA) ---
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -29,6 +31,13 @@ class _RegisterPageState extends State<RegisterPage> {
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmFocus = FocusNode();
 
+  // Cores do Design Stitch
+  final Color _primaryColor = const Color(0xFF13EC6D); // Verde Neon
+  final Color _backgroundColor = const Color(0xFF102218); // Verde Escuro Fundo
+  final Color _inputFillColor = const Color(0xFF152E1F); // Fundo dos inputs
+  final Color _textColor = Colors.white;
+  final Color _subTextColor = const Color(0xFF94A3B8); // Slate-400
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -42,11 +51,8 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  /// Método para cadastro com E-mail e Senha
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
     setState(() => _loading = true);
@@ -62,175 +68,235 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Conta criada com sucesso!')),
       );
-
-      // --- CORREÇÃO DE NAVEGAÇÃO ---
-      // Fecha a página de cadastro, revelando o AuthGate (que mostrará o Feed)
       Navigator.of(context).pop();
-      // --- FIM DA CORREÇÃO ---
 
     } on FirebaseAuthException catch (e) {
       String message = 'Erro ao registrar';
       switch (e.code) {
-        case 'email-already-in-use':
-          message = 'Este e-mail já está em uso.';
-          break;
-        case 'invalid-email':
-          message = 'O formato do e-mail é inválido.';
-          break;
-        case 'weak-password':
-          message = 'A senha é muito fraca (mínimo 6 caracteres).';
-          break;
-        default:
-          message = e.message ?? 'Ocorreu um erro desconhecido.';
+        case 'email-already-in-use': message = 'Este e-mail já está em uso.'; break;
+        case 'invalid-email': message = 'O formato do e-mail é inválido.'; break;
+        case 'weak-password': message = 'A senha é muito fraca.'; break;
+        default: message = e.message ?? 'Ocorreu um erro desconhecido.';
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(message),
-            backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  /// Método para cadastro/login com Google
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
       await _authService.signInWithGoogle();
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login com Google realizado com sucesso!')),
       );
-
-      // --- CORREÇÃO DE NAVEGAÇÃO ---
-      // Fecha a página de cadastro, revelando o AuthGate (que mostrará o Feed)
       Navigator.of(context).pop();
-      // --- FIM DA CORREÇÃO ---
-
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Ocorreu um erro: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(content: Text('Erro: ${e.toString()}'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  // --- PARTE 2: O "ROSTO" (UI) ---
+  // --- PARTE 2: O NOVO DESIGN (STITCH) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _backgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10.w),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 20.h),
             child: Form(
               key: _formKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(height: 50.h),
-                  Center(
-                    child: Image.asset('images/logo.png'),
-                  ),
-                  SizedBox(height: 50.h),
+                  // Header
                   Text(
-                    'Crie sua conta no AppFit',
-                    style: TextStyle(
-                      fontSize: 22.sp,
+                    "Junte-se à Comunidade",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.epilogue(
+                      fontSize: 28.sp,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: _textColor,
+                      height: 1.1,
                     ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    "Comece sua jornada fitness conosco.",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.epilogue(
+                      fontSize: 16.sp,
+                      color: _subTextColor,
+                    ),
+                  ),
+                  SizedBox(height: 24.h),
+
+                  // Foto de Perfil (Visual apenas por enquanto, pois o cadastro logicamente não envia foto ainda)
+                  Stack(
+                    children: [
+                      Container(
+                        width: 120.w,
+                        height: 120.w,
+                        decoration: BoxDecoration(
+                          color: _inputFillColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey.shade700, width: 2, style: BorderStyle.solid), // Dashed é difícil nativamente, solid fica bom
+                        ),
+                        child: Icon(Icons.person, size: 60.sp, color: Colors.grey.shade500),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        left: 0,
+                        top: 0,
+                        child: Center(
+                          child: Icon(Icons.add_a_photo, color: Colors.white.withOpacity(0.8), size: 30.sp),
+                        ),
+                      )
+                    ],
                   ),
                   SizedBox(height: 30.h),
 
-                  _buildTextFormField(
+                  // Campos do Formulário
+                  _buildLabel("Nome Completo"),
+                  _buildStitchInput(
                     controller: _nameController,
                     focusNode: _nameFocus,
-                    nextFocusNode: _emailFocus,
-                    hintText: 'Nome Completo',
-                    icon: Icons.person,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Por favor, informe seu nome';
-                      }
-                      return null;
-                    },
+                    nextFocus: _emailFocus,
+                    hintText: "Digite seu nome",
+                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Informe seu nome' : null,
                   ),
-                  SizedBox(height: 15.h),
+                  SizedBox(height: 16.h),
 
-                  _buildTextFormField(
+                  _buildLabel("E-mail"),
+                  _buildStitchInput(
                     controller: _emailController,
                     focusNode: _emailFocus,
-                    nextFocusNode: _passwordFocus,
-                    hintText: 'Email',
-                    icon: Icons.email,
+                    nextFocus: _passwordFocus,
+                    hintText: "seuemail@exemplo.com",
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Por favor, informe seu e-mail';
-                      }
-                      if (!value.contains('@') || !value.contains('.')) {
-                        return 'Por favor, insira um e-mail válido';
-                      }
+                      if (value == null || value.isEmpty) return 'Informe o e-mail';
+                      if (!value.contains('@')) return 'E-mail inválido';
                       return null;
                     },
                   ),
-                  SizedBox(height: 15.h),
+                  SizedBox(height: 16.h),
 
-                  _buildTextFormField(
+                  _buildLabel("Criar Senha"),
+                  _buildStitchInput(
                     controller: _passwordController,
                     focusNode: _passwordFocus,
-                    nextFocusNode: _confirmFocus,
-                    hintText: 'Senha',
-                    icon: Icons.lock,
+                    nextFocus: _confirmFocus,
+                    hintText: "Mínimo 6 caracteres",
                     isPassword: true,
                     obscureText: _obscurePassword,
-                    onObscureToggle: () => setState(() => _obscurePassword = !_obscurePassword),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, informe uma senha';
-                      }
-                      if (value.length < 6) {
-                        return 'A senha deve ter no mínimo 6 caracteres';
-                      }
-                      return null;
-                    },
+                    onToggleVisibility: () => setState(() => _obscurePassword = !_obscurePassword),
+                    validator: (value) => (value != null && value.length < 6) ? 'Mínimo 6 caracteres' : null,
                   ),
-                  SizedBox(height: 15.h),
+                  SizedBox(height: 16.h),
 
-                  _buildTextFormField(
+                  _buildLabel("Confirmar Senha"), // Adaptado do design original para manter lógica
+                  _buildStitchInput(
                     controller: _confirmController,
                     focusNode: _confirmFocus,
-                    hintText: 'Confirmar Senha',
-                    icon: Icons.lock_outline,
+                    hintText: "Repita a senha",
                     isPassword: true,
                     obscureText: _obscureConfirm,
-                    onObscureToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor, confirme sua senha';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'As senhas não coincidem';
-                      }
-                      return null;
-                    },
+                    onToggleVisibility: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    validator: (value) => (value != _passwordController.text) ? 'As senhas não coincidem' : null,
+                    onFieldSubmitted: (_) => _register(),
                   ),
-                  SizedBox(height: 25.h),
+                  SizedBox(height: 24.h),
 
-                  _buildRegisterButton(),
-                  SizedBox(height: 20.h),
-                  _buildSocialLogins(),
-                  SizedBox(height: 15.h),
-                  _buildLoginLink(),
-                  SizedBox(height: 20.h),
+                  // Botão Cadastrar
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48.h,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _register,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primaryColor,
+                        foregroundColor: _backgroundColor, // Texto escuro
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        elevation: 0,
+                      ),
+                      child: _loading
+                          ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: _backgroundColor, strokeWidth: 2))
+                          : Text(
+                        "Cadastrar",
+                        style: GoogleFonts.epilogue(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+
+                  // Termos
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16.h),
+                    child: Text(
+                      "Ao se cadastrar, você concorda com nossos Termos de Serviço e Política de Privacidade.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: _subTextColor, fontSize: 12.sp),
+                    ),
+                  ),
+
+                  // Divisor
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade800)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10.w),
+                        child: Text("OU", style: TextStyle(color: _subTextColor, fontSize: 12.sp)),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade800)),
+                    ],
+                  ),
+                  SizedBox(height: 16.h),
+
+                  // Botão Google
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48.h,
+                    child: OutlinedButton.icon(
+                      onPressed: _loading ? null : _signInWithGoogle,
+                      icon: Image.asset('images/google_logo.png', height: 20.h),
+                      label: Text("Entrar com Google", style: GoogleFonts.epilogue(fontWeight: FontWeight.w600)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade700),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        backgroundColor: Colors.white.withOpacity(0.05),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 24.h),
+
+                  // Link Login
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text("Já possui uma conta? ", style: TextStyle(color: _subTextColor)),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(), // Volta para o login
+                        child: Text(
+                          "Entrar",
+                          style: GoogleFonts.epilogue(color: _primaryColor, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -240,155 +306,77 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildRegisterButton() {
-    return InkWell(
-      onTap: _loading ? null : _register,
-      child: Container(
-        alignment: Alignment.center,
-        width: double.infinity,
-        height: 44.h,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: BorderRadius.circular(10.r),
-        ),
-        child: _loading
-            ? const SizedBox(
-          height: 25,
-          width: 25,
-          child: CircularProgressIndicator(
-            color: Colors.white,
-            strokeWidth: 3,
-          ),
-        )
-            : Text(
-          'Criar Conta',
-          style: TextStyle(
-            fontSize: 23.sp,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+  // --- WIDGETS AUXILIARES ---
+
+  Widget _buildLabel(String text) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Text(
+        text,
+        style: GoogleFonts.epilogue(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w500),
       ),
     );
   }
 
-  Widget _buildSocialLogins() {
-    return OutlinedButton.icon(
-      icon: Image.asset('images/google_logo.png', height: 24.h),
-      label: const Text(
-        'Cadastrar com Google',
-        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-      ),
-      style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.grey),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 12.h),
-          minimumSize: Size(double.infinity, 44.h)
-      ),
-      onPressed: _loading ? null : _signInWithGoogle,
-    );
-  }
-
-  Widget _buildLoginLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          "Já tem uma conta?  ",
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: Colors.grey,
-          ),
-        ),
-        GestureDetector(
-          onTap: _loading
-              ? null
-              : () => Navigator.of(context).pop(), // Apenas fecha a tela de cadastro
-          child: Text(
-            "Login ",
-            style: TextStyle(
-                fontSize: 15.sp,
-                color: Colors.blue,
-                fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTextFormField({
+  Widget _buildStitchInput({
     required TextEditingController controller,
     required FocusNode focusNode,
-    FocusNode? nextFocusNode,
+    FocusNode? nextFocus,
     required String hintText,
-    required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     bool isPassword = false,
     bool obscureText = false,
-    VoidCallback? onObscureToggle,
-    required String? Function(String?) validator,
+    VoidCallback? onToggleVisibility,
+    String? Function(String?)? validator,
+    void Function(String)? onFieldSubmitted,
   }) {
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
       keyboardType: keyboardType,
       obscureText: obscureText,
-      textInputAction: nextFocusNode != null
-          ? TextInputAction.next
-          : TextInputAction.done,
-      onFieldSubmitted: (_) {
-        if (nextFocusNode != null) {
-          FocusScope.of(context).requestFocus(nextFocusNode);
-        } else {
-          if(!_loading) _register();
+      style: const TextStyle(color: Colors.white),
+      cursorColor: _primaryColor,
+      textInputAction: nextFocus != null ? TextInputAction.next : TextInputAction.done,
+      onFieldSubmitted: (val) {
+        if (nextFocus != null) {
+          FocusScope.of(context).requestFocus(nextFocus);
+        } else if (onFieldSubmitted != null) {
+          onFieldSubmitted(val);
         }
       },
       decoration: InputDecoration(
+        filled: true,
+        fillColor: _inputFillColor,
         hintText: hintText,
-        prefixIcon: Icon(
-          icon,
-          color: focusNode.hasFocus ? Colors.black : Colors.grey[600],
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: Colors.grey.shade700),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: _primaryColor, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: Colors.red.shade400),
         ),
         suffixIcon: isPassword
             ? IconButton(
           icon: Icon(
-            obscureText ? Icons.visibility : Icons.visibility_off,
-            color: Colors.grey,
+            obscureText ? Icons.visibility_off : Icons.visibility,
+            color: Colors.grey.shade500,
           ),
-          onPressed: onObscureToggle,
+          onPressed: onToggleVisibility,
         )
             : null,
-        contentPadding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(
-            width: 2.w,
-            color: Colors.grey,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(
-            width: 2.w,
-            color: Colors.black,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(
-            width: 2.w,
-            color: Theme.of(context).colorScheme.error,
-          ),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(
-            width: 2.w,
-            color: Theme.of(context).colorScheme.error,
-          ),
-        ),
       ),
       validator: validator,
     );

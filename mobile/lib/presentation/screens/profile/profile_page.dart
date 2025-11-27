@@ -1,4 +1,4 @@
-// lib/presentation/screens/profile/profile_page.dart - CORRIGIDO (Abas Simplificadas)
+// lib/presentation/screens/profile/profile_page.dart - FINAL (Sem Botão Voltar)
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -49,18 +49,17 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    // O TabController agora tem 2 abas
     return DefaultTabController(
-      length: 2, // APENAS Posts e Conquistas
+      length: 2, // Posts e Conquistas
       child: Scaffold(
         body: NestedScrollView(
           headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+                // --- CORREÇÃO: Botão 'leading' (voltar) REMOVIDO daqui ---
+                // Isso impede que o usuário tente "fechar" a aba principal
+                automaticallyImplyLeading: false, // Garante que não apareça seta automática
+
                 title: _buildUsernameTitle(),
                 centerTitle: true,
                 actions: [
@@ -80,7 +79,6 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               SliverPersistentHeader(
                 delegate: _SliverTabBarDelegate(
-                  // A TabBar agora tem 2 abas
                   const TabBar(
                     tabs: [
                       Tab(text: "POSTS"),
@@ -92,14 +90,13 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ];
           },
-          // O TabBarView agora tem 2 children
           body: TabBarView(
             children: [
               // Aba 1: Posts (A grade)
               _buildPostsGrid(),
 
               // Aba 2: Conquistas
-              Center(child: Text("Conquistas (Em breve)")),
+              const Center(child: Text("Conquistas (Em breve)")),
             ],
           ),
         ),
@@ -229,9 +226,9 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withAlpha(128),
+        color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withAlpha(128)),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
@@ -264,11 +261,9 @@ class _ProfilePageState extends State<ProfilePage> {
           return const Center(child: Text("Nenhum post encontrado."));
         }
 
-        // Filtra posts para mostrar apenas os que TÊM imagem
         final postsWithImages = snapshot.data!.docs
             .where((doc) {
           final data = doc.data();
-          // Verifica se o mapa de dados contém a chave e se ela não é nula/vazia
           return data.containsKey('imageUrl') &&
               data['imageUrl'] != null &&
               data['imageUrl'].isNotEmpty;
@@ -311,9 +306,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 }
-
-// A classe _WorkoutHistoryTile foi removida pois não é mais usada
-
 
 /// Classe helper para fazer a TabBar ficar "grudenta"
 class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {

@@ -1,10 +1,13 @@
-// lib/presentation/widgets/feed/post_card.dart - CORREÇÃO FINAL (Null Safety)
+// lib/presentation/widgets/feed/post_card.dart - COM COMPARTILHAMENTO
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../application/feed/reaction_service.dart'; // Import do ReactionService
+import 'package:google_fonts/google_fonts.dart';
+import 'package:share_plus/share_plus.dart'; // <-- 1. IMPORT ADICIONADO
+import '../../../application/feed/reaction_service.dart';
+import 'comments/comments_sheet.dart';
 
 class PostCard extends StatefulWidget {
   final String postId;
@@ -24,15 +27,54 @@ class _PostCardState extends State<PostCard> {
   final ReactionService _reactionService = ReactionService();
   String? _userId;
 
+  // Cores do Design
+  final Color _cardBackgroundColor = Colors.black.withValues(alpha: 0.4);
+  final Color _primaryColor = const Color(0xFF13EC6D);
+  final Color _textColor = Colors.white;
+  final Color _subTextColor = Colors.white.withValues(alpha: 0.6);
+
   @override
   void initState() {
     super.initState();
     _userId = FirebaseAuth.instance.currentUser?.uid;
   }
 
+  void _showComments() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CommentsSheet(postId: widget.postId),
+    );
+  }
+
+  // --- 2. NOVO MÉTODO DE COMPARTILHAR ---
+  void _sharePost() {
+    final String userName = widget.postData['userDisplayName'] ?? 'Atleta';
+    final String? workoutTitle = widget.postData['workoutTitle'];
+    final String? caption = widget.postData['caption'];
+
+    // Monta o texto do compartilhamento
+    final StringBuffer shareText = StringBuffer();
+    shareText.writeln('🔥 Confira o treino de $userName no AppFit!');
+
+    if (workoutTitle != null && workoutTitle.isNotEmpty) {
+      shareText.writeln('\nTreino: $workoutTitle');
+    }
+
+    if (caption != null && caption.isNotEmpty) {
+      shareText.writeln('"$caption"');
+    }
+
+    shareText.writeln('\n#AppFit #Fitness #Treino');
+
+    // Abre a janela nativa de compartilhamento
+    Share.share(shareText.toString());
+  }
+  // --------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    // Extraindo dados
     final String userName = widget.postData['userDisplayName'] ?? 'Atleta';
     final String? userPhotoUrl = widget.postData['userPhotoUrl'];
     final String? caption = widget.postData['caption'];
@@ -42,192 +84,248 @@ class _PostCardState extends State<PostCard> {
     final List<dynamic>? exercises = widget.postData['exercises'] as List<dynamic>?;
     final Map<String, dynamic>? metrics = widget.postData['metrics'] as Map<String, dynamic>?;
 
+    final int commentCount = widget.postData['commentCount'] ?? 0;
+
     String timeAgo = '';
     if (createdAt != null) {
       timeAgo = _formatTimeAgo(createdAt.toDate());
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --- HEADER: Avatar, Nome, Data ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: Colors.grey.shade300,
-                    backgroundImage: userPhotoUrl != null && userPhotoUrl.isNotEmpty
-                        ? NetworkImage(userPhotoUrl)
-                        : null,
-                    child: userPhotoUrl == null || userPhotoUrl.isEmpty
-                        ? Icon(Icons.person, color: Colors.grey[600], size: 24)
-                        : null,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          userName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: _cardBackgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // HEADER
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey.shade800,
+                  backgroundImage: userPhotoUrl != null && userPhotoUrl.isNotEmpty
+                      ? NetworkImage(userPhotoUrl)
+                      : null,
+                  child: userPhotoUrl == null || userPhotoUrl.isEmpty
+                      ? Icon(Icons.person, color: _subTextColor, size: 24)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        userName,
+                        style: GoogleFonts.epilogue(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _textColor,
                         ),
-                        if (timeAgo.isNotEmpty)
-                          Text(
-                            timeAgo,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                      ),
+                      if (timeAgo.isNotEmpty)
+                        Text(
+                          timeAgo,
+                          style: GoogleFonts.epilogue(
+                            fontSize: 12,
+                            color: _subTextColor,
                           ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            // --- IMAGEM DO POST ---
-            if (imageUrl != null && imageUrl.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 0, bottom: 8.0),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(0),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: 250,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container( height: 250, color: Colors.grey[200], child: const Center(child: CircularProgressIndicator()));
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container( height: 250, color: Colors.grey[200], child: Center(child: Icon(Icons.broken_image, color: Colors.grey[600])));
-                    },
+                        ),
+                    ],
                   ),
                 ),
-              ),
+                IconButton(
+                  icon: Icon(Icons.more_horiz, color: _subTextColor),
+                  onPressed: () {},
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
+          ),
 
-            // --- Conteúdo Principal (Título, Exercícios, Legenda, Métricas) ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          // TEXTOS
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (workoutTitle != null && workoutTitle.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6.0),
+                    child: Text(
+                      workoutTitle,
+                      style: GoogleFonts.epilogue(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: _textColor,
+                      ),
+                    ),
+                  ),
+                if (caption != null && caption.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Text(
+                      caption,
+                      style: GoogleFonts.epilogue(
+                        fontSize: 15,
+                        color: _textColor.withValues(alpha: 0.9),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // DETALHES DO TREINO
+          if (exercises != null && exercises.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (workoutTitle != null && workoutTitle.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
-                      child: Text(
-                        workoutTitle,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  if (exercises != null && exercises.isNotEmpty)
-                    _buildWorkoutDetails(context, exercises),
+                  _buildWorkoutDetails(context, exercises),
                   if (metrics != null && metrics.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     _buildMetricsChips(context, metrics),
-                  ],
-                  if ((workoutTitle != null && workoutTitle.isNotEmpty) || (exercises != null && exercises.isNotEmpty) || (metrics != null && metrics.isNotEmpty) )
-                    const SizedBox(height: 8),
-                  if (caption != null && caption.isNotEmpty)
-                    Text(caption, style: Theme.of(context).textTheme.bodyLarge),
+                  ]
                 ],
               ),
             ),
-            const SizedBox(height: 10),
 
-            // --- SEÇÃO DE REAÇÕES ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-              child: _buildReactionsRow(),
+          // IMAGEM
+          if (imageUrl != null && imageUrl.isNotEmpty)
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(height: 250, color: Colors.white10, child: const Center(child: CircularProgressIndicator()));
+              },
+              errorBuilder: (context, error, stackTrace) =>
+                  Container(height: 200, color: Colors.white10, child: Center(child: Icon(Icons.broken_image, color: _subTextColor))),
             ),
-            const SizedBox(height: 12), // Espaço final
-          ],
-        ),
+
+          // RODAPÉ (Reações e Ações)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+            ),
+            child: _buildReactionsRow(commentCount),
+          ),
+        ],
       ),
     );
   }
 
-  /// Widget helper para a linha de reações
-  Widget _buildReactionsRow() {
+  Widget _buildReactionsRow(int commentCount) {
+    if (_userId == null) {
+      return Text("Faça login para reagir.", style: TextStyle(color: _subTextColor, fontSize: 12));
+    }
+
     return StreamBuilder<String?>(
-      stream: _userId != null
-          ? _reactionService.watchUserReaction(postId: widget.postId, userId: _userId!)
-          : Stream.value(null),
+      stream: _reactionService.watchUserReaction(postId: widget.postId, userId: _userId!),
       builder: (context, userReactionSnapshot) {
-        if (userReactionSnapshot.hasError) {
-          return Tooltip(message: userReactionSnapshot.error.toString(), child: Text("Erro", style: TextStyle(color: Colors.red.shade300, fontSize: 12)));
-        }
         final String? currentUserEmoji = userReactionSnapshot.data;
 
         return StreamBuilder<Map<String, int>>(
           stream: _reactionService.watchReactionCounts(postId: widget.postId),
           builder: (context, countsSnapshot) {
-            if (countsSnapshot.hasError) {
-              return Tooltip(message: countsSnapshot.error.toString(), child: Text("Erro contagem", style: TextStyle(color: Colors.red.shade300, fontSize: 12)));
-            }
-            if (countsSnapshot.connectionState == ConnectionState.waiting && !countsSnapshot.hasData && !userReactionSnapshot.hasData) {
-              return const SizedBox(height: 30, child: Center(child: SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2))));
-            }
-
             final Map<String, int> reactionCounts = countsSnapshot.data ?? {};
             final visibleReactions = reactionCounts.entries
                 .where((entry) => entry.value > 0)
                 .toList()
               ..sort((a, b) => b.value.compareTo(a.value));
 
-            return Row(
+            return Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                // Mostra as reações com contagem
+                // Botões de Reação
                 ...visibleReactions.map((entry) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: ElevatedButton(
-                      onPressed: () => _toggleReaction(entry.key),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        backgroundColor: currentUserEmoji == entry.key
-                            ? Theme.of(context).colorScheme.primaryContainer
-                            : Theme.of(context).chipTheme.backgroundColor ?? Colors.grey.shade200,
-                        foregroundColor: currentUserEmoji == entry.key
-                            ? Theme.of(context).colorScheme.onPrimaryContainer
-                            : Theme.of(context).textTheme.bodyMedium?.color,
-                        shape: const StadiumBorder(),
-                        elevation: 0,
-                        side: BorderSide.none,
+                  bool isMine = currentUserEmoji == entry.key;
+                  return GestureDetector(
+                    onTap: () => _toggleReaction(entry.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isMine ? _primaryColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: isMine ? _primaryColor : Colors.transparent,
+                            width: 1
+                        ),
                       ),
-                      child: Text(
-                        '${entry.key} ${entry.value}',
-                        style: const TextStyle(fontSize: 14),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(entry.key, style: const TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${entry.value}',
+                            style: GoogleFonts.epilogue(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isMine ? _primaryColor : _subTextColor,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
                 }).toList(),
 
-                // Botão "Reagir"
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.add_reaction_outlined, size: 18),
-                  label: Text(currentUserEmoji != null ? 'Reagiu' : 'Reagir'),
+                // Botão Reagir (+)
+                IconButton(
+                  icon: Icon(
+                      currentUserEmoji != null ? Icons.add_reaction : Icons.add_reaction_outlined,
+                      color: _subTextColor
+                  ),
                   onPressed: _showReactionPicker,
-                  style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: const StadiumBorder(),
-                      side: BorderSide(color: Colors.grey.shade400)
+                  tooltip: "Reagir",
+                ),
+
+                // Botão Comentar
+                TextButton.icon(
+                  onPressed: _showComments,
+                  icon: Icon(Icons.chat_bubble_outline, color: _subTextColor),
+                  label: Text(
+                    commentCount > 0 ? '$commentCount' : '',
+                    style: GoogleFonts.epilogue(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: _subTextColor
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
+
+                // --- 3. BOTÃO DE COMPARTILHAR CONECTADO ---
+                IconButton(
+                  icon: Icon(Icons.share_outlined, color: _subTextColor),
+                  onPressed: _sharePost, // Chama o método _sharePost
+                  tooltip: "Compartilhar",
+                ),
+                // ------------------------------------------
               ],
             );
           },
@@ -236,12 +334,11 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  /// Mostra um ModalBottomSheet para escolher um emoji
   void _showReactionPicker() {
     if (_userId == null) return;
-
     showModalBottomSheet(
       context: context,
+      backgroundColor: const Color(0xFF102218),
       builder: (context) {
         return SafeArea(
           child: Container(
@@ -271,7 +368,6 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  /// Função auxiliar para chamar o toggleReaction
   Future<void> _toggleReaction(String emoji) async {
     if (_userId == null) return;
     try {
@@ -288,13 +384,10 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  /// Widget helper para construir os detalhes do treino (CORRIGIDO Null Safety)
   Widget _buildWorkoutDetails(BuildContext context, List<dynamic>? exercises) {
     if (exercises == null || exercises.isEmpty) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      // CORREÇÃO: Adicionado tipo explícito <Widget> ao map
       children: exercises.map<Widget>((exerciseData) {
         if (exerciseData is! Map) return const SizedBox.shrink();
         final Map<String, dynamic> exerciseMap = Map<String, dynamic>.from(exerciseData);
@@ -302,35 +395,42 @@ class _PostCardState extends State<PostCard> {
         final List<dynamic>? sets = exerciseMap['sets'] as List<dynamic>?;
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 4.0, top: 2.0),
+          padding: const EdgeInsets.only(bottom: 8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                  exerciseName,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)
+              Row(
+                children: [
+                  Icon(Icons.fitness_center, size: 14, color: _primaryColor),
+                  const SizedBox(width: 6),
+                  Text(
+                      exerciseName,
+                      style: GoogleFonts.epilogue(
+                          color: _textColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14
+                      )
+                  ),
+                ],
               ),
               if (sets != null && sets.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(left: 8.0, top: 2),
+                  padding: const EdgeInsets.only(left: 20.0, top: 2),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    // CORREÇÃO: Adicionado tipo explícito <Widget> ao map
                     children: sets.asMap().entries.map<Widget>((entry) {
                       int setIndex = entry.key;
                       if (entry.value is! Map) return const SizedBox.shrink();
                       Map<String, dynamic> setData = Map<String, dynamic>.from(entry.value);
                       List<String> details = [];
-                      if (setData['reps'] != null) details.add('${setData['reps']}x');
+                      if (setData['reps'] != null) details.add('${setData['reps']} reps');
                       if (setData['weight'] != null) details.add('${setData['weight']}kg');
-
                       if (details.isNotEmpty) {
                         return Text(
-                          '${setIndex + 1}: ${details.join(' ')}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey[700]),
+                          '${setIndex + 1}: ${details.join(' • ')}',
+                          style: GoogleFonts.epilogue(color: _subTextColor, fontSize: 12),
                         );
                       }
-                      // Garante que sempre retorna um Widget
                       return const SizedBox.shrink();
                     }).toList(),
                   ),
@@ -338,13 +438,10 @@ class _PostCardState extends State<PostCard> {
             ],
           ),
         );
-        // CORREÇÃO: Adicionado fallback explícito (embora map não deva retornar null aqui)
-        // return const SizedBox.shrink(); // Não é necessário aqui, pois o map itera sobre a lista
       }).toList(),
     );
   }
 
-  /// Widget Helper para exibir as métricas como Chips
   Widget _buildMetricsChips(BuildContext context, Map<String, dynamic> metrics) {
     return Wrap(
       spacing: 8.0,
@@ -357,37 +454,31 @@ class _PostCardState extends State<PostCard> {
         if (label == 'DuracaoMin') { label = 'Duração'; unit = ' min'; }
         if (label == 'VolumeKg') { label = 'Volume'; unit = ' kg'; }
         if (label == 'Calorias') { unit = ' kcal'; }
-        return Chip(
-          label: Text('$label: $displayValue$unit', style: TextStyle(fontSize: 12)),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-          visualDensity: VisualDensity.compact,
-          backgroundColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-          side: BorderSide.none,
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
+          child: Text(
+            '$label: $displayValue$unit',
+            style: GoogleFonts.epilogue(fontSize: 11, color: _subTextColor),
+          ),
         );
       }).toList(),
     );
   }
 
-
-  /// Helper para formatar o tempo relativo (CORRIGIDO Null Safety)
   String _formatTimeAgo(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-
     if (diff.inSeconds < 60) return 'agora';
-    if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
-    if (diff.inHours < 24) return 'há ${diff.inHours} h';
-    if (diff.inDays < 7) return 'há ${diff.inDays} d';
-
-    try {
-      return DateFormat('dd MMM', 'pt_BR').format(dt);
-    } catch (e) {
-      // print("Locale pt_BR não encontrado para DateFormat, usando formato padrão.");
-      return DateFormat('yyyy-MM-dd').format(dt); // Fallback
-    }
-    // CORREÇÃO: Adicionando retorno final explícito para satisfazer o analisador
-    // Embora inalcançável devido ao try/catch cobrir o caso 'else'.
-    // return DateFormat('yyyy-MM-dd').format(dt);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m atrás';
+    if (diff.inHours < 24) return '${diff.inHours}h atrás';
+    if (diff.inDays < 7) return '${diff.inDays}d atrás';
+    try { return DateFormat('dd MMM', 'pt_BR').format(dt); }
+    catch (e) { return DateFormat('yyyy-MM-dd').format(dt); }
   }
 }

@@ -1,8 +1,8 @@
-// lib/presentation/screens/auth/login_page.dart - CORRIGIDO (com Navegação)
+// lib/presentation/screens/auth/login_page.dart - DESIGN STITCH (Lógica Mantida)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart'; // Necessário para a fonte Epilogue
 import '../../../application/auth/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -13,12 +13,19 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  // --- PARTE 1: A LÓGICA (INTACTA) ---
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   bool _loading = false;
+  bool _obscureText = true; // Variável para controlar visibilidade da senha
   final AuthService _authService = AuthService();
+
+  // Cores do Design Stitch
+  final Color _primaryColor = const Color(0xFF39E079); // Verde Neon
+  final Color _backgroundColor = const Color(0xFF122017); // Verde Escuro Profundo
+  final Color _inputFillColor = const Color(0xFF0D1610).withOpacity(0.5); // Fundo do input
 
   @override
   void dispose() {
@@ -29,150 +36,228 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  /// Método para login com E-mail e Senha
   Future<void> _signIn() async {
     FocusScope.of(context).unfocus();
-
     setState(() => _loading = true);
     try {
       await _authService.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login realizado com sucesso!')),
-      );
-
-      // --- CORREÇÃO DE NAVEGAÇÃO ---
-      // Fecha a página de login para revelar o AuthGate (que mostrará o Feed)
       Navigator.of(context).pop();
-      // --- FIM DA CORREÇÃO ---
-
     } on FirebaseAuthException catch (e) {
       String message = 'Erro ao autenticar';
       switch (e.code) {
-        case 'invalid-email':
-          message = 'O formato do e-mail é inválido.';
-          break;
+        case 'invalid-email': message = 'E-mail inválido.'; break;
         case 'user-not-found':
-        case 'invalid-credential': // Nova versão do Firebase usa este código
-          message = 'Usuário não encontrado ou senha incorreta.';
-          break;
-        case 'wrong-password':
-          message = 'Senha incorreta. Por favor, tente novamente.';
-          break;
-        case 'user-disabled':
-          message = 'Este usuário foi desabilitado.';
-          break;
-        default:
-          message = 'Verifique seu e-mail e senha.';
+        case 'invalid-credential': message = 'Credenciais inválidas.'; break;
+        case 'wrong-password': message = 'Senha incorreta.'; break;
+        case 'user-disabled': message = 'Usuário desabilitado.'; break;
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(message),
-            backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  /// Método para login com Google
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
       await _authService.signInWithGoogle();
-
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login com Google realizado com sucesso!')),
-      );
-
-      // --- CORREÇÃO DE NAVEGAÇÃO ---
-      // Fecha a página de login para revelar o AuthGate (que mostrará o Feed)
       Navigator.of(context).pop();
-      // --- FIM DA CORREÇÃO ---
-
-    } on FirebaseAuthException catch (e) {
-      String message = e.message ?? 'Erro no login com Google.';
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(message),
-            backgroundColor: Theme.of(context).colorScheme.error),
-      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Ocorreu um erro: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error),
+        SnackBar(content: Text('Erro no Google: ${e.toString()}'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-
-  // --- PARTE 2: O "ROSTO" (UI) ---
+  // --- PARTE 2: O NOVO DESIGN (STITCH) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Fundo branco para tema claro
-      body: SafeArea(
-        child: SingleChildScrollView( // Permite rolagem quando o teclado aparece
-          child: Column(
-            children: [
-              SizedBox(width: 96.w, height: 100.h),
-              Center(
-                child: Image.asset('images/logo.png'),
-              ),
-              SizedBox(height: 120.h),
-              Textfild(_emailController, _emailFocus, 'Email', Icons.email),
-              SizedBox(height: 15.h),
-              Textfild(_passwordController, _passwordFocus, 'Password', Icons.lock),
-              SizedBox(height: 15.h),
-              forget(),
-              SizedBox(height: 15.h),
-              login(),
-              SizedBox(height: 20.h),
-              _buildSocialLogins(),
-              SizedBox(height: 15.h),
-              Have(),
-              SizedBox(height: 20.h), // Espaço extra no final
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget Have() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 10.w),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center, // Centralizado
+      backgroundColor: _backgroundColor,
+      body: Stack(
         children: [
-          Text(
-            "Não tem uma conta?  ",
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.grey,
+          // 1. Imagem de Fundo
+          Positioned.fill(
+            child: Image.network(
+              // Usando uma imagem de academia do Unsplash como placeholder
+              'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1470&auto=format&fit=crop',
+              fit: BoxFit.cover,
             ),
           ),
-          GestureDetector(
-            onTap: _loading
-                ? null
-                : () => Navigator.pushNamed(context, '/register'), // Navega para a rota de registro
-            child: Text(
-              "Sign up ",
-              style: TextStyle(
-                  fontSize: 15.sp,
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold),
+          // 2. Overlay Escuro (Blur e Cor)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.7), // Escurece a imagem
+              // Se quiser blur, precisaria do BackdropFilter, mas só a cor já dá o efeito do design
+            ),
+          ),
+
+          // 3. Conteúdo
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Ícone e Título
+                    Icon(Icons.fitness_center, size: 64, color: _primaryColor),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Bem-vindo de volta',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.epilogue(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Continue sua jornada',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.epilogue(
+                        fontSize: 16,
+                        color: Colors.grey[400],
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Inputs
+                    _buildLabel("E-mail"),
+                    _buildInput(
+                      controller: _emailController,
+                      focusNode: _emailFocus,
+                      hintText: "Digite seu e-mail",
+                      icon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 20),
+                    _buildLabel("Senha"),
+                    _buildInput(
+                      controller: _passwordController,
+                      focusNode: _passwordFocus,
+                      hintText: "Digite sua senha",
+                      isPassword: true,
+                    ),
+
+                    // Esqueceu a senha
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () { /* TODO: Recuperar senha */ },
+                        child: Text(
+                          "Esqueceu sua senha?",
+                          style: GoogleFonts.epilogue(
+                            color: _primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Botão Entrar
+                    SizedBox(
+                      height: 56, // h-14 do Tailwind
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _signIn,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
+                          foregroundColor: _backgroundColor, // Texto escuro no botão verde
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: _loading
+                            ? CircularProgressIndicator(color: _backgroundColor)
+                            : Text(
+                          "Entrar",
+                          style: GoogleFonts.epilogue(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // Divisor "OU"
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey[700])),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text("ou", style: TextStyle(color: Colors.grey[400])),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey[700])),
+                      ],
+                    ),
+                    const SizedBox(height: 30),
+
+                    // Botões Sociais (Google e Facebook)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildSocialButton(
+                            label: "Google",
+                            iconPath: 'images/google_logo.png', // Sua imagem existente
+                            onTap: _loading ? null : _signInWithGoogle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSocialButton(
+                            label: "Facebook",
+                            iconData: Icons.facebook, // Usando ícone nativo por enquanto
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Facebook em breve!')),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // Link Cadastro
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Não tem uma conta? ",
+                          style: TextStyle(color: Colors.grey[300]),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pushNamed(context, '/register'),
+                          child: Text(
+                            "Cadastre-se",
+                            style: GoogleFonts.epilogue(
+                              color: _primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -180,118 +265,97 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget login() {
+  // --- WIDGETS AUXILIARES PARA O DESIGN ---
+
+  Widget _buildLabel(String text) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 10.w),
-      child: InkWell(
-        onTap: _loading ? null : _signIn,
-        child: Container(
-          alignment: Alignment.center,
-          width: double.infinity,
-          height: 44.h,
-          decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          child: _loading
-              ? const SizedBox(
-            height: 25,
-            width: 25,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 3,
-            ),
-          )
-              : Text(
-            'Login',
-            style: TextStyle(
-              fontSize: 23.sp,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        text,
+        style: GoogleFonts.epilogue(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
         ),
       ),
     );
   }
 
-  Widget _buildSocialLogins() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 10.w),
-      child: OutlinedButton.icon(
-        icon: Image.asset('images/google_logo.png', height: 24.h),
-        label: const Text(
-          'Login com Google',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Colors.grey),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            padding: EdgeInsets.symmetric(vertical: 12.h),
-            minimumSize: Size(double.infinity, 44.h) // Ocupa largura total
-        ),
-        onPressed: _loading ? null : _signInWithGoogle,
+  Widget _buildInput({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hintText,
+    IconData? icon,
+    bool isPassword = false,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _inputFillColor, // Fundo escuro translúcido
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[700]!),
       ),
-    );
-  }
-
-  Widget forget() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 15.w),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          GestureDetector(
-            onTap: () {
-              // todo: Lógica para 'Esqueci a senha'
-            },
-            child: Text(
-              'Esqueceu a senha?',
-              style: TextStyle(
-                fontSize: 13.sp,
-                color: Colors.blue,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Padding Textfild(TextEditingController controll, FocusNode focusNode,
-      String typename, IconData icon) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 10.w),
       child: TextField(
-        style: TextStyle(fontSize: 18.sp, color: Colors.black),
-        controller: controll,
+        controller: controller,
         focusNode: focusNode,
-        obscureText: typename == 'Password',
+        keyboardType: keyboardType,
+        obscureText: isPassword ? _obscureText : false,
+        style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
-          hintText: typename,
-          prefixIcon: Icon(
-            icon,
-            color: focusNode.hasFocus ? Colors.black : Colors.grey[600],
-          ),
-          contentPadding:
-          EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.r),
-            borderSide: BorderSide(
-              width: 2.w,
-              color: Colors.grey,
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          suffixIcon: isPassword
+              ? IconButton(
+            icon: Icon(
+              _obscureText ? Icons.visibility_off : Icons.visibility,
+              color: Colors.grey[400],
             ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.r),
-            borderSide: BorderSide(
-              width: 2.w,
-              color: Colors.black,
+            onPressed: () {
+              setState(() {
+                _obscureText = !_obscureText;
+              });
+            },
+          )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({
+    required String label,
+    String? iconPath,
+    IconData? iconData,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1), // bg-white/10
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[700]!),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (iconPath != null)
+              Image.asset(iconPath, height: 24)
+            else if (iconData != null)
+              Icon(iconData, color: Colors.blue, size: 24), // Azul para FB
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: GoogleFonts.epilogue(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
