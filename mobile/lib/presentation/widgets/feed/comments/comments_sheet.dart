@@ -1,4 +1,4 @@
-// lib/presentation/widgets/feed/comments/comments_sheet.dart - COMPLETO (Likes + Respostas)
+// lib/presentation/widgets/feed/comments/comments_sheet.dart - CORRIGIDO (Foto do Usuário no Input)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,7 +24,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
   // Estado para controlar se estamos respondendo a alguém
   String? _replyingToCommentId;
   String? _replyingToUserName;
-  final FocusNode _focusNode = FocusNode(); // Para focar no input
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
@@ -39,21 +39,19 @@ class _CommentsSheetState extends State<CommentsSheet> {
 
     try {
       if (_replyingToCommentId != null) {
-        // Enviar RESPOSTA
         await _commentService.addReply(
           postId: widget.postId,
           commentId: _replyingToCommentId!,
           content: text,
         );
       } else {
-        // Enviar COMENTÁRIO normal
         await _commentService.addComment(
           postId: widget.postId,
           content: text,
         );
       }
       _commentController.clear();
-      _cancelReply(); // Sai do modo resposta
+      _cancelReply();
       FocusScope.of(context).unfocus();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
@@ -65,7 +63,6 @@ class _CommentsSheetState extends State<CommentsSheet> {
       _replyingToCommentId = commentId;
       _replyingToUserName = userName;
     });
-    // Foca no campo de texto automaticamente
     FocusScope.of(context).requestFocus(_focusNode);
   }
 
@@ -85,6 +82,11 @@ class _CommentsSheetState extends State<CommentsSheet> {
     final textColor = isDark ? Colors.white : Colors.black;
     final subTextColor = isDark ? Colors.grey[400] : Colors.grey[600];
     const primaryColor = Color(0xFF13EC6D);
+
+    // --- CORREÇÃO AQUI: Pegar a foto do usuário atual ---
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final String? currentUserPhoto = currentUser?.photoURL;
+    // ----------------------------------------------------
 
     return Container(
       decoration: BoxDecoration(
@@ -114,7 +116,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
                 if (comments.isEmpty) return Center(child: Text('Seja o primeiro a comentar!', style: TextStyle(color: subTextColor)));
 
                 return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 120), // Espaço para o input + aviso de resposta
+                  padding: const EdgeInsets.only(bottom: 120),
                   itemCount: comments.length,
                   itemBuilder: (context, index) {
                     final doc = comments[index];
@@ -137,7 +139,6 @@ class _CommentsSheetState extends State<CommentsSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Aviso "Respondendo a..."
                 if (_replyingToUserName != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8, left: 4),
@@ -154,15 +155,21 @@ class _CommentsSheetState extends State<CommentsSheet> {
                     ),
                   ),
 
-                // Campo de texto
                 Row(
                   children: [
+                    // --- CORREÇÃO AQUI: Exibir a foto do usuário atual ---
                     CircleAvatar(
                       radius: 18,
                       backgroundColor: Colors.grey[300],
-                      // TODO: Foto do usuário logado
-                      child: Icon(Icons.person, size: 24, color: Colors.grey[600]),
+                      backgroundImage: currentUserPhoto != null
+                          ? NetworkImage(currentUserPhoto)
+                          : null,
+                      child: currentUserPhoto == null
+                          ? Icon(Icons.person, size: 24, color: Colors.grey[600])
+                          : null,
                     ),
+                    // ----------------------------------------------------
+
                     const SizedBox(width: 12),
                     Expanded(
                       child: Container(
@@ -210,6 +217,8 @@ class _CommentsSheetState extends State<CommentsSheet> {
     );
   }
 
+  // --- WIDGETS AUXILIARES (Mantidos Iguais) ---
+
   Widget _buildCommentTile(String commentId, Map<String, dynamic> data, Color textColor, Color? subTextColor, Color primaryColor) {
     final String userName = data['userName'] ?? 'Usuário';
     final String? userPhotoUrl = data['userPhotoUrl'];
@@ -217,14 +226,13 @@ class _CommentsSheetState extends State<CommentsSheet> {
     final Timestamp? createdAt = data['createdAt'];
     final List likes = data['likes'] ?? [];
     final bool isLiked = likes.contains(_currentUserId);
-    final int likeCount = data['likeCount'] ?? 0;
+    final int likeCount = data['likeCount'] ?? 0; // Pode ser usado para exibir contagem
 
     String timeAgo = '';
     if (createdAt != null) timeAgo = _formatTimeAgo(createdAt.toDate());
 
     return Column(
       children: [
-        // O Comentário Principal
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
@@ -269,7 +277,6 @@ class _CommentsSheetState extends State<CommentsSheet> {
                   ],
                 ),
               ),
-              // Botão de Like e Contagem
               Column(
                 children: [
                   GestureDetector(
@@ -288,14 +295,14 @@ class _CommentsSheetState extends State<CommentsSheet> {
           ),
         ),
 
-        // Sub-lista de Respostas (Indentada)
+        // Respostas
         StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _commentService.getReplies(widget.postId, commentId),
           builder: (context, snapshot) {
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox.shrink();
 
             return Padding(
-              padding: const EdgeInsets.only(left: 52), // Indentação
+              padding: const EdgeInsets.only(left: 52),
               child: Column(
                 children: snapshot.data!.docs.map((doc) {
                   final rData = doc.data();
@@ -309,7 +316,6 @@ class _CommentsSheetState extends State<CommentsSheet> {
     );
   }
 
-  // Widget para uma resposta individual (Visualmente similar ao comentário)
   Widget _buildReplyTile(String parentCommentId, String replyId, Map<String, dynamic> data, Color textColor, Color? subTextColor, Color primaryColor) {
     final String userName = data['userName'] ?? 'Usuário';
     final String? userPhotoUrl = data['userPhotoUrl'];
@@ -323,7 +329,7 @@ class _CommentsSheetState extends State<CommentsSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            radius: 12, // Avatar menor
+            radius: 12,
             backgroundImage: userPhotoUrl != null ? NetworkImage(userPhotoUrl) : null,
             child: userPhotoUrl == null ? Icon(Icons.person, size: 14, color: Colors.grey[600]) : null,
             backgroundColor: Colors.grey[300],

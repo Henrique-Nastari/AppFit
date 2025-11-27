@@ -1,4 +1,4 @@
-﻿// main.dart - CORRIGIDO (com AuthGate restaurado)
+﻿// lib/main.dart - VERSÃO FINAL
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,17 +7,25 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 
+// Imports de Telas e Serviços
 import 'presentation/screens/auth/login_page.dart';
 import 'presentation/screens/auth/register_page.dart';
 import 'presentation/screens/feed/feed_page.dart';
 import 'presentation/screens/feed/create_post_page.dart';
 import 'presentation/screens/profile/profile_page.dart';
 import 'presentation/screens/workouts/workouts_page.dart';
+import 'application/notifications/notification_service.dart'; // Import do Serviço
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Inicializa formatação de data para pt_BR
   await initializeDateFormatting('pt_BR', null);
+
+  // Inicializa o serviço de notificações (Permissões, Canais Android)
+  await NotificationService().initialize();
+
   runApp(const AppFit());
 }
 
@@ -35,7 +43,7 @@ class AppFit extends StatelessWidget {
           title: 'AppFit',
           debugShowCheckedModeBanner: false,
 
-          // Temas (claro e escuro)
+          // --- TEMA CLARO ---
           theme: ThemeData(
             brightness: Brightness.light,
             scaffoldBackgroundColor: Colors.white,
@@ -61,9 +69,11 @@ class AppFit extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
+
+          // --- TEMA ESCURO (Visual Stitch) ---
           darkTheme: ThemeData(
             brightness: Brightness.dark,
-            scaffoldBackgroundColor: Colors.black,
+            scaffoldBackgroundColor: Colors.black, // Ou Color(0xFF102218) se quiser forçar o verde em tudo
             appBarTheme: AppBarTheme(
               backgroundColor: Colors.grey[900],
               foregroundColor: Colors.white,
@@ -91,9 +101,6 @@ class AppFit extends StatelessWidget {
 
           home: const AuthGate(),
           routes: {
-            // CORREÇÃO: Removendo 'const' se alguma página não for const
-            // Mas, idealmente, todas deveriam ser const.
-            // O erro "isn't a const constructor" sumirá ao corrigir o AuthGate.
             '/home': (context) => const FeedPage(),
             '/login': (context) => const LoginPage(),
             '/register': (context) => const RegisterPage(),
@@ -107,7 +114,6 @@ class AppFit extends StatelessWidget {
   }
 }
 
-// CORREÇÃO: Implementação completa do AuthGate restaurada
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -116,14 +122,21 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        // Estado de carregamento
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
+        // Usuário Logado
         if (snapshot.hasData) {
-          return const FeedPage();
+          // CORREÇÃO CRÍTICA: Usamos o UID como key para forçar a reconstrução
+          // completa da árvore de widgets quando a conta muda.
+          return FeedPage(key: ValueKey(snapshot.data!.uid));
         }
+
+        // Usuário Deslogado
         return const LoginPage();
       },
     );

@@ -1,11 +1,11 @@
-// lib/presentation/widgets/feed/post_card.dart - COM COMPARTILHAMENTO
+// lib/presentation/widgets/feed/post_card.dart - VERSÃO FINAL (Com Localização no Header)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:share_plus/share_plus.dart'; // <-- 1. IMPORT ADICIONADO
+import 'package:share_plus/share_plus.dart';
 import '../../../application/feed/reaction_service.dart';
 import 'comments/comments_sheet.dart';
 
@@ -48,15 +48,18 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  // --- 2. NOVO MÉTODO DE COMPARTILHAR ---
   void _sharePost() {
     final String userName = widget.postData['userDisplayName'] ?? 'Atleta';
     final String? workoutTitle = widget.postData['workoutTitle'];
     final String? caption = widget.postData['caption'];
+    final String? location = widget.postData['location']; // Pega a localização para compartilhar também
 
-    // Monta o texto do compartilhamento
     final StringBuffer shareText = StringBuffer();
     shareText.writeln('🔥 Confira o treino de $userName no AppFit!');
+
+    if (location != null && location.isNotEmpty) {
+      shareText.writeln('📍 $location');
+    }
 
     if (workoutTitle != null && workoutTitle.isNotEmpty) {
       shareText.writeln('\nTreino: $workoutTitle');
@@ -68,10 +71,8 @@ class _PostCardState extends State<PostCard> {
 
     shareText.writeln('\n#AppFit #Fitness #Treino');
 
-    // Abre a janela nativa de compartilhamento
     Share.share(shareText.toString());
   }
-  // --------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -81,14 +82,22 @@ class _PostCardState extends State<PostCard> {
     final String? imageUrl = widget.postData['imageUrl'];
     final Timestamp? createdAt = widget.postData['createdAt'];
     final String? workoutTitle = widget.postData['workoutTitle'];
+    // --- 1. LER A LOCALIZAÇÃO ---
+    final String? location = widget.postData['location'];
+
     final List<dynamic>? exercises = widget.postData['exercises'] as List<dynamic>?;
     final Map<String, dynamic>? metrics = widget.postData['metrics'] as Map<String, dynamic>?;
-
     final int commentCount = widget.postData['commentCount'] ?? 0;
 
     String timeAgo = '';
     if (createdAt != null) {
       timeAgo = _formatTimeAgo(createdAt.toDate());
+    }
+
+    // Formata o subtítulo (Localização • Tempo)
+    String headerSubtitle = timeAgo;
+    if (location != null && location.isNotEmpty) {
+      headerSubtitle = "$location • $timeAgo";
     }
 
     return Container(
@@ -130,14 +139,18 @@ class _PostCardState extends State<PostCard> {
                           color: _textColor,
                         ),
                       ),
-                      if (timeAgo.isNotEmpty)
+                      // --- 2. EXIBIR LOCALIZAÇÃO + TEMPO ---
+                      if (headerSubtitle.isNotEmpty)
                         Text(
-                          timeAgo,
+                          headerSubtitle,
                           style: GoogleFonts.epilogue(
                             fontSize: 12,
                             color: _subTextColor,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      // -------------------------------------
                     ],
                   ),
                 ),
@@ -220,7 +233,7 @@ class _PostCardState extends State<PostCard> {
                   Container(height: 200, color: Colors.white10, child: Center(child: Icon(Icons.broken_image, color: _subTextColor))),
             ),
 
-          // RODAPÉ (Reações e Ações)
+          // RODAPÉ
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -232,6 +245,9 @@ class _PostCardState extends State<PostCard> {
       ),
     );
   }
+
+  // ... (Resto dos métodos: _buildReactionsRow, _showReactionPicker, etc. MANTIDOS IGUAIS) ...
+  // Para garantir que o arquivo fique completo, vou incluir os helpers aqui embaixo também.
 
   Widget _buildReactionsRow(int commentCount) {
     if (_userId == null) {
@@ -256,7 +272,6 @@ class _PostCardState extends State<PostCard> {
               spacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                // Botões de Reação
                 ...visibleReactions.map((entry) {
                   bool isMine = currentUserEmoji == entry.key;
                   return GestureDetector(
@@ -290,7 +305,6 @@ class _PostCardState extends State<PostCard> {
                   );
                 }).toList(),
 
-                // Botão Reagir (+)
                 IconButton(
                   icon: Icon(
                       currentUserEmoji != null ? Icons.add_reaction : Icons.add_reaction_outlined,
@@ -300,7 +314,6 @@ class _PostCardState extends State<PostCard> {
                   tooltip: "Reagir",
                 ),
 
-                // Botão Comentar
                 TextButton.icon(
                   onPressed: _showComments,
                   icon: Icon(Icons.chat_bubble_outline, color: _subTextColor),
@@ -319,13 +332,11 @@ class _PostCardState extends State<PostCard> {
                   ),
                 ),
 
-                // --- 3. BOTÃO DE COMPARTILHAR CONECTADO ---
                 IconButton(
                   icon: Icon(Icons.share_outlined, color: _subTextColor),
-                  onPressed: _sharePost, // Chama o método _sharePost
+                  onPressed: _sharePost, // Chama o share
                   tooltip: "Compartilhar",
                 ),
-                // ------------------------------------------
               ],
             );
           },

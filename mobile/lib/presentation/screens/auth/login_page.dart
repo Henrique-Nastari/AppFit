@@ -1,8 +1,8 @@
-// lib/presentation/screens/auth/login_page.dart - DESIGN STITCH (Lógica Mantida)
+// lib/presentation/screens/auth/login_page.dart - CORRIGIDO (Sem tela preta)
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart'; // Necessário para a fonte Epilogue
+import 'package:google_fonts/google_fonts.dart';
 import '../../../application/auth/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
@@ -13,19 +13,18 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // --- PARTE 1: A LÓGICA (INTACTA) ---
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   bool _loading = false;
-  bool _obscureText = true; // Variável para controlar visibilidade da senha
+  bool _obscureText = true;
   final AuthService _authService = AuthService();
 
   // Cores do Design Stitch
-  final Color _primaryColor = const Color(0xFF39E079); // Verde Neon
-  final Color _backgroundColor = const Color(0xFF122017); // Verde Escuro Profundo
-  final Color _inputFillColor = const Color(0xFF0D1610).withOpacity(0.5); // Fundo do input
+  final Color _primaryColor = const Color(0xFF13EC6D);
+  final Color _backgroundColor = const Color(0xFF102218);
+  final Color _inputFillColor = const Color(0xFF0D1610).withValues(alpha: 0.5);
 
   @override
   void dispose() {
@@ -45,7 +44,15 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text,
       );
       if (!mounted) return;
-      Navigator.of(context).pop();
+
+      // --- CORREÇÃO DA TELA PRETA ---
+      // Só fecha a tela se ela foi empilhada (veio do cadastro, etc).
+      // Se for a tela raiz (do AuthGate), não faz nada, o AuthGate troca pro Feed sozinho.
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      // ------------------------------
+
     } on FirebaseAuthException catch (e) {
       String message = 'Erro ao autenticar';
       switch (e.code) {
@@ -69,7 +76,13 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await _authService.signInWithGoogle();
       if (!mounted) return;
-      Navigator.of(context).pop();
+
+      // --- CORREÇÃO DA TELA PRETA ---
+      if (Navigator.canPop(context)) {
+        Navigator.of(context).pop();
+      }
+      // ------------------------------
+
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,30 +93,28 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // --- PARTE 2: O NOVO DESIGN (STITCH) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _backgroundColor,
       body: Stack(
         children: [
-          // 1. Imagem de Fundo
+          // Imagem de Fundo
           Positioned.fill(
             child: Image.network(
-              // Usando uma imagem de academia do Unsplash como placeholder
               'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1470&auto=format&fit=crop',
               fit: BoxFit.cover,
+              errorBuilder: (c, e, s) => Container(color: _backgroundColor),
             ),
           ),
-          // 2. Overlay Escuro (Blur e Cor)
+          // Overlay Escuro
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(0.7), // Escurece a imagem
-              // Se quiser blur, precisaria do BackdropFilter, mas só a cor já dá o efeito do design
+              color: Colors.black.withValues(alpha: 0.7),
             ),
           ),
 
-          // 3. Conteúdo
+          // Conteúdo
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -112,7 +123,6 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Ícone e Título
                     Icon(Icons.fitness_center, size: 64, color: _primaryColor),
                     const SizedBox(height: 16),
                     Text(
@@ -136,7 +146,6 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 40),
 
-                    // Inputs
                     _buildLabel("E-mail"),
                     _buildInput(
                       controller: _emailController,
@@ -154,7 +163,6 @@ class _LoginPageState extends State<LoginPage> {
                       isPassword: true,
                     ),
 
-                    // Esqueceu a senha
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -170,14 +178,13 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Botão Entrar
                     SizedBox(
-                      height: 56, // h-14 do Tailwind
+                      height: 56,
                       child: ElevatedButton(
                         onPressed: _loading ? null : _signIn,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primaryColor,
-                          foregroundColor: _backgroundColor, // Texto escuro no botão verde
+                          foregroundColor: _backgroundColor,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           elevation: 0,
                         ),
@@ -195,7 +202,6 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 30),
 
-                    // Divisor "OU"
                     Row(
                       children: [
                         Expanded(child: Divider(color: Colors.grey[700])),
@@ -208,13 +214,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 30),
 
-                    // Botões Sociais (Google e Facebook)
                     Row(
                       children: [
                         Expanded(
                           child: _buildSocialButton(
                             label: "Google",
-                            iconPath: 'images/google_logo.png', // Sua imagem existente
+                            iconPath: 'images/google_logo.png',
                             onTap: _loading ? null : _signInWithGoogle,
                           ),
                         ),
@@ -222,7 +227,7 @@ class _LoginPageState extends State<LoginPage> {
                         Expanded(
                           child: _buildSocialButton(
                             label: "Facebook",
-                            iconData: Icons.facebook, // Usando ícone nativo por enquanto
+                            iconData: Icons.facebook,
                             onTap: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Facebook em breve!')),
@@ -235,7 +240,6 @@ class _LoginPageState extends State<LoginPage> {
 
                     const SizedBox(height: 40),
 
-                    // Link Cadastro
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -265,8 +269,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // --- WIDGETS AUXILIARES PARA O DESIGN ---
-
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -291,7 +293,7 @@ class _LoginPageState extends State<LoginPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: _inputFillColor, // Fundo escuro translúcido
+        color: _inputFillColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[700]!),
       ),
@@ -336,7 +338,7 @@ class _LoginPageState extends State<LoginPage> {
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1), // bg-white/10
+          color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey[700]!),
         ),
@@ -346,7 +348,7 @@ class _LoginPageState extends State<LoginPage> {
             if (iconPath != null)
               Image.asset(iconPath, height: 24)
             else if (iconData != null)
-              Icon(iconData, color: Colors.blue, size: 24), // Azul para FB
+              Icon(iconData, color: Colors.blue, size: 24),
             const SizedBox(width: 10),
             Text(
               label,
