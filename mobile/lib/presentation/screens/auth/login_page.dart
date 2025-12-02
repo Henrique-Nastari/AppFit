@@ -219,7 +219,7 @@ class _LoginPageState extends State<LoginPage> {
                         Expanded(
                           child: _buildSocialButton(
                             label: "Google",
-                            iconPath: 'images/google_logo.png',
+                            iconPath: 'assets/images/google_logo.png',
                             onTap: _loading ? null : _signInWithGoogle,
                           ),
                         ),
