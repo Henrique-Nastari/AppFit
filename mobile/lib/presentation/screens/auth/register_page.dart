@@ -270,7 +270,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     height: 48.h,
                     child: OutlinedButton.icon(
                       onPressed: _loading ? null : _signInWithGoogle,
-                      icon: Image.asset('images/google_logo.png', height: 20.h),
+                      icon: Image.asset('assets/images/google_logo.png', height: 20.h),
                       label: Text("Entrar com Google", style: GoogleFonts.epilogue(fontWeight: FontWeight.w600)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
