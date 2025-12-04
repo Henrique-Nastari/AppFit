@@ -21,6 +21,7 @@ import '../workouts/workouts_page.dart';
 import '../progress/progress_page.dart';
 import '../search/search_page.dart';
 import '../notifications/notifications_page.dart';
+import '../chat/group_list_page.dart';
 import 'create_post_page.dart';
 
 class FeedPage extends StatefulWidget {
@@ -169,6 +170,18 @@ class _FeedContentState extends State<_FeedContent> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      IconButton(
+                        icon: Icon(Icons.group_outlined, color: textColor),
+                        tooltip: 'Grupos',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => GroupListPage()),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 12),
                       // --- BOTÃO DE NOTIFICAÇÕES (Com Badge e Lógica) ---
                       StreamBuilder<int>(
                         stream: _notificationService.getUnreadCount(),
