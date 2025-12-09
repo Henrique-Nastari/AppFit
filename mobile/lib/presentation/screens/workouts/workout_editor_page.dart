@@ -8,21 +8,50 @@ import '../../../models/workout.dart';
 import '../../../services/firestore_repository.dart';
 
 class WorkoutEditorPage extends StatefulWidget {
-  const WorkoutEditorPage({super.key});
+  final Workout? workout;
+
+  const WorkoutEditorPage({super.key, this.workout});
 
   @override
   State<WorkoutEditorPage> createState() => _WorkoutEditorPageState();
 }
 
 class _WorkoutEditorPageState extends State<WorkoutEditorPage> {
-  // --- LÓGICA INTACTA ---
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _notesController = TextEditingController();
-  final List<_WorkoutExerciseForm> _exercises = [_WorkoutExerciseForm()];
+  late TextEditingController _titleController;
+  late TextEditingController _notesController;
+  final List<_WorkoutExerciseForm> _exercises = [];
   final FirestoreRepository _repository = FirestoreRepository();
 
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.workout?.title);
+    _notesController = TextEditingController(text: widget.workout?.notes);
+
+    if (widget.workout != null) {
+      for (final ex in widget.workout!.exercises) {
+        final exForm = _WorkoutExerciseForm();
+        exForm.nameController.text = ex.name;
+        exForm.notesController.text = ex.notes ?? '';
+        exForm.sets.clear(); // Remove o set padrão criado no construtor
+
+        for (final s in ex.sets) {
+          final sForm = _WorkoutSetForm();
+          if (s.reps != null) sForm.repsController.text = s.reps.toString();
+          if (s.weightKg != null) sForm.weightController.text = s.weightKg.toString();
+          if (s.restSeconds != null) sForm.restController.text = s.restSeconds.toString();
+          exForm.sets.add(sForm);
+        }
+        if (exForm.sets.isEmpty) exForm.addSet();
+        _exercises.add(exForm);
+      }
+    } else {
+      _exercises.add(_WorkoutExerciseForm());
+    }
+  }
 
   @override
   void dispose() {
@@ -70,16 +99,22 @@ class _WorkoutEditorPageState extends State<WorkoutEditorPage> {
         .toList();
 
     final workout = Workout(
+      id: widget.workout?.id,
       ownerId: user.uid,
       title: _titleController.text.trim(),
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       exercises: exercises,
       visibility: 'private',
+      createdAt: widget.workout?.createdAt,
     );
 
     setState(() => _isSaving = true);
     try {
-      await _repository.createWorkout(workout);
+      if (widget.workout != null && widget.workout!.id != null) {
+        await _repository.updateWorkout(widget.workout!.id!, workout);
+      } else {
+        await _repository.createWorkout(workout);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (error) {
@@ -143,7 +178,7 @@ class _WorkoutEditorPageState extends State<WorkoutEditorPage> {
                   ),
                   Expanded(
                     child: Text(
-                      "Novo Treino",
+                      widget.workout != null ? "Editar Treino" : "Novo Treino",
                       textAlign: TextAlign.center,
                       style: GoogleFonts.epilogue(
                         fontSize: 18,

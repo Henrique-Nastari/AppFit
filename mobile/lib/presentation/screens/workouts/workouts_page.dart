@@ -21,13 +21,11 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
   void _navigateToEditor({Workout? workout}) async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => const WorkoutEditorPage(),
-        // Se tivéssemos edição, passaríamos o workout aqui
-        // settings: RouteSettings(arguments: workout),
+        builder: (context) => WorkoutEditorPage(workout: workout),
       ),
     );
 
-    if (result == true) {
+    if (result == true && mounted) {
       setState(() {}); // Recarrega a lista após salvar
     }
   }
